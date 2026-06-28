@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Rust build output
+src-tauri/target/
+
+# Bundled binaries (download/build separately)
+src-tauri/resources/syncthing.exe
+src-tauri/resources/*.exe
+
+# Local logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.sw?
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test artifacts
+coverage/
+*.tmp
+*.temp
