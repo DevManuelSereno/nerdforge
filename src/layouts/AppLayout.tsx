@@ -1,23 +1,17 @@
 import { Link, useLocation, Outlet } from "react-router-dom";
-import {
-  Home,
-  Users,
-  BookOpen,
-  Settings,
-  FolderOpen,
-  Menu,
-  X,
-} from "lucide-react";
+import { Home, FolderKanban, MessageSquare, Users, BookOpen, Settings, FolderOpen, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: Home },
+  { path: "/projects", label: "Projetos", icon: FolderKanban },
+  { path: "/chat", label: "Chat", icon: MessageSquare },
   { path: "/npc", label: "NPCs", icon: Users },
   { path: "/lore", label: "Lore", icon: BookOpen },
   { path: "/vault", label: "Vault", icon: FolderOpen },
-  { path: "/settings", label: "Configurações", icon: Settings },
+  { path: "/settings", label: "Configura\u00e7\u00f5es", icon: Settings },
 ];
 
 export function AppLayout() {

@@ -1,17 +1,26 @@
 mod config;
 mod fs;
 mod indexer;
+mod hermes;
 mod logging;
 mod parser;
+mod projects;
 mod syncthing;
 mod vault;
 
 use config::{ensure_config, is_first_run, load_config, save_config, AppConfig};
-use fs::{create_dir, list_dir, read_file, write_file, start_watcher};
+use fs::{create_dir, list_dir, read_file, remove_dir, write_file, start_watcher};
 use indexer::{get_index_command, rebuild_index_command};
 use logging::{default_log_dir, get_log_path, init_logging};
 use parser::{
     parse_markdown_file_command, parse_yaml_file_command, validate_visual_dna_command,
+};
+use hermes::{
+    chat_with_hermes_command, list_conversations_command, load_conversation_command,
+};
+use projects::{
+    create_project_command, get_dashboard_data_command, get_recent_activities_command,
+    list_projects_command,
 };
 use syncthing::{
     accept_device_command, add_device_command, configure_vault_folder_command,
@@ -105,6 +114,7 @@ pub fn run() {
             write_file,
             list_dir,
             create_dir,
+            remove_dir,
             start_file_watcher,
             stop_file_watcher,
             load_config_command,
@@ -119,6 +129,13 @@ pub fn run() {
             parse_markdown_file_command,
             parse_yaml_file_command,
             validate_visual_dna_command,
+            list_projects_command,
+            get_recent_activities_command,
+            create_project_command,
+            get_dashboard_data_command,
+            list_conversations_command,
+            load_conversation_command,
+            chat_with_hermes_command,
             start_syncthing_command,
             stop_syncthing_command,
             syncthing_status_command,

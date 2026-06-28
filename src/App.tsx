@@ -2,6 +2,9 @@ import { RouterProvider, createHashRouter, Navigate } from "react-router-dom";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
 import { AppLayout } from "@/layouts/AppLayout";
 import { Dashboard } from "@/pages/Dashboard";
+import { ProjectsPage } from "@/pages/ProjectsPage";
+import { NewProjectPage } from "@/pages/NewProjectPage";
+import { ChatPage } from "@/pages/ChatPage";
 import { NPCPage } from "@/pages/NPCPage";
 import { LorePage } from "@/pages/LorePage";
 import { VaultPage } from "@/pages/VaultPage";
@@ -43,6 +46,9 @@ function AppRoutes() {
         isFirstRun === false
           ? [
               { index: true, element: <Dashboard /> },
+              { path: "projects", element: <ProjectsPage /> },
+              { path: "projects/new", element: <NewProjectPage /> },
+              { path: "chat", element: <ChatPage /> },
               { path: "npc", element: <NPCPage /> },
               { path: "lore", element: <LorePage /> },
               { path: "vault", element: <VaultPage /> },

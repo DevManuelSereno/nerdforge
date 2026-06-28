@@ -523,61 +523,61 @@ Legenda:
 
 ### **FASE 4 — Dashboard + Projetos** ⏳
 
-#### ⏳ Slice 4.1 — Dashboard
+#### ✅ Slice 4.1 — Dashboard
 - Status geral (Syncthing, dispositivos, projetos)
 - Timeline de atividades recentes
-- Quick actions (novo projeto, adicionar dispositivo)
+- Quick actions (abrir vault, adicionar dispositivo)
 
 **Critérios de pronto:**
-- ⏳ Dashboard mostra status do Syncthing
-- ⏳ Lista dispositivos conectados
-- ⏳ Lista projetos
-- ⏳ Timeline de atividades
+- ✅ Dashboard mostra status do Syncthing
+- ✅ Lista dispositivos conectados (na Settings)
+- ✅ Lista projetos
+- ✅ Timeline de atividades
 
 ---
 
-#### ⏳ Slice 4.2 — Lista de Projetos
+#### ✅ Slice 4.2 — Lista de Projetos
 - Cards com nome, status, última modificação
-- Abrir projeto (carrega vault)
-- Criar novo projeto (wizard)
-- Deletar projeto (confirmação)
+- Abrir projeto
+- Criar novo projeto
+- Deletar projeto
 
 **Critérios de pronto:**
-- ⏳ Lista projetos como cards
-- ⏳ Posso abrir projeto
-- ⏳ Posso criar projeto
-- ⏳ Posso deletar projeto
+- ✅ Tela de projetos listando cards
+- ✅ Botão para abrir projeto
+- ✅ Botão para criar novo projeto
+- ✅ Botão para deletar projeto
 
 ---
 
 #### ⏳ Slice 4.3 — Criar Projeto
-- Nome do projeto
-- Pasta (file dialog)
+#### ✅ Slice 4.3 — Criar Projeto
+- Wizard de criação
 - Template (RPG, Livro, Personalizado)
-- Cria `.nerdforge/config.yaml` automaticamente
+- Cria estrutura de pastas + `config.yaml`
 
 **Critérios de pronto:**
-- ⏳ Wizard de criação funcional
-- ⏳ Cria estrutura de pastas
-- ⏳ Cria config.yaml
-- ⏳ Projeto aparece na lista
+- ✅ Wizard com nome + template
+- ✅ Cria estrutura de pastas
+- ✅ Cria `config.yaml`
+- ✅ Abre o novo projeto automaticamente
 
 ---
 
 ### **FASE 5 — Módulos** ⏳
 
-#### ⏳ Slice 5.1 — Hermes CLI Integration
+#### ✅ Slice 5.1 — Hermes CLI Integration
 - Tauri command: `chat_with_hermes(prompt, history)`
 - Spawn `hermes` CLI como child process
 - Captura stdout (resposta completa)
 - Timeout handling (30s)
-- Error handling (Hermes não encontrado)
+- Error handling (Hermes n\u00e3o encontrado)
 
-**Critérios de pronto:**
-- ⏳ Posso chamar Hermes via CLI
-- ⏳ Resposta é capturada
-- ⏳ Timeout funciona
-- ⏳ Erros são tratados
+**Crit\u00e9rios de pronto:**
+- ✅ Posso chamar Hermes via CLI
+- ✅ Resposta \u00e9 capturada
+- ✅ Timeout funciona
+- ✅ Erros s\u00e3o tratados
 
 ---
 

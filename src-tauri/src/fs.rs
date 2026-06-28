@@ -52,6 +52,11 @@ pub fn create_dir(path: String) -> Result<(), String> {
     std::fs::create_dir_all(&path).map_err(|e| format!("Failed to create dir: {}", e))
 }
 
+#[tauri::command]
+pub fn remove_dir(path: String) -> Result<(), String> {
+    std::fs::remove_dir_all(&path).map_err(|e| format!("Failed to remove dir: {}", e))
+}
+
 pub fn start_watcher<R: Runtime>(
     app_handle: AppHandle<R>,
     paths: Vec<String>,
