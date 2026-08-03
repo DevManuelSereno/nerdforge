@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::{load_config, save_config, AppConfig};
 use crate::indexer::load_index;
 use crate::vault;
+use crate::vaultconfig::{project_template, save_vault_config};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectInfo {
@@ -182,7 +183,9 @@ pub fn create_project(name: &str, parent_dir: &str, template: &str) -> Result<Pr
 
     fs::create_dir_all(&project_dir).map_err(|e| e.to_string())?;
 
-    vault::initialize_vault(&project_dir.to_string_lossy())?;
+    let (vault_config, folders) = project_template(template);
+    vault::initialize_vault_with_folders(&project_dir.to_string_lossy(), &folders)?;
+    save_vault_config(&project_dir.to_string_lossy(), &vault_config)?;
 
     let config_path = project_dir.join(".nerdforge").join("config.yaml");
     let mut config = AppConfig::default();
@@ -193,7 +196,7 @@ pub fn create_project(name: &str, parent_dir: &str, template: &str) -> Result<Pr
         config.modules.npc.enabled = true;
         config.modules.lore.enabled = true;
     } else if template == "book" {
-        config.modules.npc.enabled = false;
+        config.modules.npc.enabled = true;
         config.modules.lore.enabled = true;
     } else {
         config.modules.npc.enabled = true;
@@ -278,5 +281,38 @@ mod tests {
         assert_eq!(project.name, "My World");
         assert!(Path::new(&project.path).join(".nerdforge").exists());
         assert!(Path::new(&project.path).join("npcs").exists());
+    }
+
+    #[test]
+    fn test_create_project_generates_vaultconfig() {
+        let tmp = TempDir::new().unwrap();
+        let parent = tmp.path().to_string_lossy().to_string();
+        let project = create_project("Book World", &parent, "book").unwrap();
+        let project_path = Path::new(&project.path);
+
+        let vaultconfig_path = project_path.join(".nerdforge").join("vaultconfig.yaml");
+        assert!(vaultconfig_path.exists(), "vaultconfig.yaml should exist");
+
+        let content = fs::read_to_string(&vaultconfig_path).unwrap();
+        assert!(content.contains("Livro / Romance"), "vaultconfig should contain book template name");
+
+        assert!(project_path.join("chapters").exists(), "chapters folder should exist for book template");
+        assert!(project_path.join("characters").exists(), "characters folder should exist for book template");
+        assert!(project_path.join("worldbuilding").exists(), "worldbuilding folder should exist for book template");
+        assert!(!project_path.join("npcs").exists(), "npcs folder should not exist for book template");
+    }
+
+    #[test]
+    fn test_create_project_custom_template_uses_default_rpg() {
+        let tmp = TempDir::new().unwrap();
+        let parent = tmp.path().to_string_lossy().to_string();
+        let project = create_project("Custom World", &parent, "custom").unwrap();
+        let project_path = Path::new(&project.path);
+
+        let vaultconfig_path = project_path.join(".nerdforge").join("vaultconfig.yaml");
+        assert!(vaultconfig_path.exists(), "vaultconfig.yaml should exist");
+
+        assert!(project_path.join("npcs").exists(), "npcs folder should exist for custom/default template");
+        assert!(project_path.join("lore").exists(), "lore folder should exist for custom/default template");
     }
 }

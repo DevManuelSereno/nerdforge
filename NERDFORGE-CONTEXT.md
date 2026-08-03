@@ -265,6 +265,43 @@ hermes:
   auto_summarize: true
 ```
 
+**`.nerdforge/vaultconfig.yaml`**
+```yaml
+version: 1
+
+# Mapeia módulos para pastas dentro do vault.
+# Permite que cada projeto ou usuário defina sua própria organização.
+folder_map:
+  npc: npcs
+  lore: lore
+  faction: factions
+  location: locations
+  item: items
+  scene: scenes
+  timeline: timeline
+
+# Estrutura de pastas sugerida para este projeto.
+# Criada automaticamente ao inicializar o vault.
+# Pode ser editada pela UI no futuro.
+folder_template:
+  name: "Padrão RPG"
+  folders:
+    - npcs
+    - lore
+    - factions
+    - locations
+    - items
+    - scenes
+    - timeline
+    - .nerdforge
+    - .nerdforge/index
+    - .nerdforge/cache
+```
+
+**Decisão:** o arquivo `vaultconfig.yaml` guarda a estrutura de pastas e o mapeamento de módulos para pastas. Isso permite que cada projeto tenha sua organização sem que o backend/frontend fique hardcoded em nomes como `npcs/` ou `lore/`.
+
+**Nota:** no futuro (fora do escopo mínimo atual), o `folder_template` pode ser selecionado entre templates pré-definidos (RPG, Livro, Personalizado) ou editado manualmente na UI.
+
 ---
 
 ## Roadmap Completo (6 Fases, ~31 Slices)
@@ -426,6 +463,29 @@ Legenda:
 
 ---
 
+#### ✅ Slice 2.4 — Estrutura Dinâmica de Vault (mínima)
+- Criar `vaultconfig.yaml` com `folder_template` e `folder_map`
+- Backend: `scan_vault(root, max_depth)` escaneia o vault real e retorna árvore de diretórios
+- Backend: `get_vault_template()` retorna a sugestão padrão de pastas
+- Backend: `initialize_vault(root, folders)` aceita lista de pastas como parâmetro
+- Frontend: `VaultPage` mostra a árvore real do vault (pastas/arquivos)
+- Frontend: seção "Sugestão de estrutura padrão" separada, com botão "Aplicar sugestão" que cria só as pastas que faltam
+- Persistir o template aplicado em `vaultconfig.yaml`
+
+**Critérios de pronto:**
+- ✅ Página mostra a árvore real do vault
+- ✅ Sugestão padrão é exibida separadamente
+- ✅ Botão "Aplicar sugestão" cria só as pastas que faltam
+- ✅ `vaultconfig.yaml` é criado/atualizado com o template aplicado
+- ✅ `folder_map` padrão é salvo
+
+**Dívida futura (fora do escopo mínimo):**
+- Templates selecionáveis (RPG, Livro, Personalizado)
+- Lista de pastas editável na UI
+- Template customizado salvo no `vaultconfig.yaml`
+
+---
+
 ### **FASE 3 — Syncthing Embutido** ⏳
 
 #### ✅ Slice 3.1 — Process Manager
@@ -523,6 +583,8 @@ Legenda:
 
 ### **FASE 4 — Dashboard + Projetos** ⏳
 
+> **Nota de ordem de execução:** o Slice 4.3 (Criar Projeto) está marcado como concluído, mas precisa ser **revisitado após o Slice 2.4** para gerar `vaultconfig.yaml` e usar `initialize_vault(root, folders)` com a estrutura do template.
+
 #### ✅ Slice 4.1 — Dashboard
 - Status geral (Syncthing, dispositivos, projetos)
 - Timeline de atividades recentes
@@ -550,7 +612,6 @@ Legenda:
 
 ---
 
-#### ⏳ Slice 4.3 — Criar Projeto
 #### ✅ Slice 4.3 — Criar Projeto
 - Wizard de criação
 - Template (RPG, Livro, Personalizado)
@@ -562,9 +623,56 @@ Legenda:
 - ✅ Cria `config.yaml`
 - ✅ Abre o novo projeto automaticamente
 
+**Revisão pós-Slice 2.4 (concluída):**
+- ✅ O template escolhido gera o `vaultconfig.yaml` correspondente com `folder_template` e `folder_map` apropriados.
+- ✅ A criação de projeto chama `initialize_vault_with_folders(root, folders)` passando a lista do template.
+
 ---
 
 ### **FASE 5 — Módulos** ⏳
+
+> **Nota de ordem de execução:** antes de prosseguir com os módulos NPC, Lore, Factions e Locations, é necessário revisar as etapas já concluídas que dependem da estrutura dinâmica de vault:
+>
+> 1. **Slice 2.4 (Estrutura Dinâmica de Vault)** — implementado.
+> 2. **Slice 4.3 (Criar Projeto)** — revisado para gerar `vaultconfig.yaml` corretamente e usar `initialize_vault_with_folders(root, folders)`.
+>
+> Somente após essas revisões é seguro continuar com os módulos.
+
+---
+
+### Inter-fases — Revisão de Estrutura Dinâmica de Vault
+
+> **Quando:** entre a Fase 4 e a Fase 5.
+> **Motivo:** a estrutura fixa de pastas (`npcs/`, `lore/`, etc.) era limitante para projetos que não seguem o padrão RPG.
+
+**Mudanças realizadas:**
+
+1. **Novo arquivo `.nerdforge/vaultconfig.yaml`**
+   - Guarda `folder_map` (módulo → pasta) e `folder_template` (pastas sugeridas).
+   - Criado automaticamente ao inicializar o vault.
+
+2. **Backend `vault.rs`**
+   - `scan_vault(root, max_depth)` retorna árvore real de diretórios.
+   - `get_vault_template()` retorna sugestão padrão.
+   - `initialize_vault_with_folders(root, folders)` cria pastas a partir de uma lista.
+   - `initialize_vault(root)` mantido para compatibilidade, mas usa o template do `vaultconfig.yaml`.
+
+3. **Backend `vaultconfig.rs`**
+   - Novo módulo com `VaultConfig`, `FolderTemplate`, `load/save/ensure_vault_config`.
+   - `project_template(template)` retorna config + folders para RPG, Livro e Personalizado.
+
+4. **Backend `projects.rs`**
+   - `create_project` agora gera `vaultconfig.yaml` conforme o template e chama `initialize_vault_with_folders`.
+
+5. **Frontend `VaultPage.tsx`**
+   - Mostra árvore real do vault.
+   - Seção "Sugestão de estrutura" separada.
+   - Botão "Aplicar sugestão" cria só as pastas que faltam.
+
+6. **Fase 5 e 6**
+   - Módulos NPC, Lore, Factions, Locations e integração com Obsidian devem consultar `vaultconfig.yaml` para descobrir a pasta destino de cada módulo.
+
+---
 
 #### ✅ Slice 5.1 — Hermes CLI Integration
 - Tauri command: `chat_with_hermes(prompt, history)`
@@ -640,6 +748,10 @@ Legenda:
 - ⏳ Aprovação salva nos arquivos
 - ⏳ NPC aparece na lista
 
+**Atualização após Slice 2.4:**
+- O módulo deve consultar `vaultconfig.yaml` para descobrir a pasta destino de NPC (padrão `folder_map.npc`, fallback `npcs/`).
+- Se a pasta não existir, o módulo pode criá-la ou alertar o usuário.
+
 ---
 
 #### ⏳ Slice 5.6 — Regeneração Rápida
@@ -668,6 +780,9 @@ Legenda:
 - ⏳ Salva na estrutura correta
 - ⏳ Lista de artigos de lore
 
+**Atualização após Slice 2.4:**
+- Consultar `vaultconfig.yaml` (`folder_map.lore`, fallback `lore/`).
+
 ---
 
 #### ⏳ Slice 5.8 — Módulos Factions e Locations
@@ -680,6 +795,10 @@ Legenda:
 - ⏳ Factions criáveis
 - ⏳ Locations criáveis
 - ⏳ Referências entre entidades
+
+**Atualização após Slice 2.4:**
+- Factions: consultar `folder_map.faction` (fallback `factions/`).
+- Locations: consultar `folder_map.location` (fallback `locations/`).
 
 ---
 
@@ -819,12 +938,12 @@ Legenda:
 | Fase | Slices | Status | Tempo Estimado |
 |------|--------|--------|----------------|
 | Fase 1 — Fundação | 7 slices | ✅ Concluída | ~12 horas |
-| Fase 2 — Vault Engine | 3 slices | 🔄 Em andamento | ~10 horas |
-| Fase 3 — Syncthing | 3 slices | ⏳ Pendente | ~12 horas |
-| Fase 4 — Dashboard | 3 slices | ⏳ Pendente | ~10 horas |
-| Fase 5 — Módulos | 8 slices | ⏳ Pendente | ~40 horas |
+| Fase 2 — Vault Engine | 4 slices | 🔄 Em andamento | ~12 horas |
+| Fase 3 — Syncthing | 6 slices | ✅ Concluída | ~12 horas |
+| Fase 4 — Dashboard | 3 slices | ✅ Concluída (com revisão Inter-fases) | ~10 horas |
+| Fase 5 — Módulos | 8 slices | 🔄 Em andamento (1/8 concluído) | ~40 horas |
 | Fase 6 — Polish | 6 slices | ⏳ Pendente | ~18 horas |
-| **TOTAL** | **~30 slices** | **1 fase concluída** | **~102 horas** |
+| **TOTAL** | **~31 slices** | **Fases 1–4 concluídas + 5.1 concluído** | **~104 horas** |
 
 ---
 
@@ -832,7 +951,7 @@ Legenda:
 
 Quando estiver pronto para codar:
 1. Continue a sessão no Hermes
-2. Pergunte: "Vamos prosseguir para o Slice 2.2?"
-3. Eu vou implementar o próximo vertical slice
+2. Pergunte: "Vamos prosseguir para o Slice 5.2?"
+3. Implementar o Slice 5.2 — Contexto de Conversa
 
 Boa implementação! 🚀

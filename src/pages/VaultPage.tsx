@@ -9,13 +9,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FolderOpen, RefreshCw, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { FolderOpen, RefreshCw, CheckCircle2, XCircle, FileText, ChevronRight, ChevronDown } from "lucide-react";
 
-interface VaultEntry {
+interface VaultConfig {
+  version: number;
+  folder_map: Record<string, string>;
+  folder_template: {
+    name: string;
+    folders: string[];
+  };
+}
+
+interface VaultTreeNode {
   name: string;
   path: string;
-  exists: boolean;
   is_file: boolean;
+  children: VaultTreeNode[];
 }
 
 interface IndexEntry {
@@ -38,27 +47,89 @@ interface VaultIndex {
   entries: IndexEntry[];
 }
 
+function TreeNode({ node, depth = 0 }: { node: VaultTreeNode; depth?: number }) {
+  const [expanded, setExpanded] = useState(depth < 1);
+
+  const hasChildren = node.children.length > 0;
+  const isDotNerdforge = node.name === ".nerdforge";
+
+  if (isDotNerdforge && depth > 0) {
+    return null;
+  }
+
+  return (
+    <div className="select-none">
+      <div
+        className="flex items-center gap-1 rounded-md py-1 pr-2 text-sm hover:bg-muted/50"
+        style={{ paddingLeft: `${depth * 16 + 4}px` }}
+      >
+        {hasChildren ? (
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+          >
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
+        ) : (
+          <span className="h-5 w-5 shrink-0" />
+        )}
+        {node.is_file ? (
+          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+        <span className="truncate" title={node.path}>
+          {node.name}
+        </span>
+      </div>
+      {expanded && hasChildren && (
+        <div>
+          {node.children.map((child) => (
+            <TreeNode key={child.path} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function VaultPage() {
   const { workspace } = useWorkspace();
-  const [entries, setEntries] = useState<VaultEntry[]>([]);
+  const [tree, setTree] = useState<VaultTreeNode | null>(null);
+  const [vaultConfig, setVaultConfig] = useState<VaultConfig | null>(null);
   const [index, setIndex] = useState<VaultIndex | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStructure = useCallback(async () => {
+  const loadTree = useCallback(async () => {
     if (!workspace?.rootPath) return;
 
     setIsLoading(true);
     setError(null);
     try {
-      const result = await invoke<VaultEntry[]>("get_vault_structure_command", {
+      const result = await invoke<VaultTreeNode>("scan_vault_command", {
         root: workspace.rootPath,
+        maxDepth: 2,
       });
-      setEntries(result);
+      setTree(result);
     } catch (err) {
       setError(String(err));
     } finally {
       setIsLoading(false);
+    }
+  }, [workspace?.rootPath]);
+
+  const loadVaultConfig = useCallback(async () => {
+    if (!workspace?.rootPath) return;
+
+    try {
+      const result = await invoke<VaultConfig>("ensure_vault_config_command", {
+        root: workspace.rootPath,
+      });
+      setVaultConfig(result);
+    } catch (err) {
+      console.error("Falha ao carregar vaultconfig:", err);
     }
   }, [workspace?.rootPath]);
 
@@ -88,7 +159,27 @@ export function VaultPage() {
       await invoke("initialize_vault_command", {
         root: workspace.rootPath,
       });
-      await loadStructure();
+      await loadTree();
+      await loadVaultConfig();
+      await loadIndex();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function applyTemplate() {
+    if (!workspace?.rootPath || !vaultConfig) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await invoke("initialize_vault_with_folders_command", {
+        root: workspace.rootPath,
+        folders: vaultConfig.folder_template.folders,
+      });
+      await loadTree();
       await loadIndex();
     } catch (err) {
       setError(String(err));
@@ -115,9 +206,14 @@ export function VaultPage() {
   }
 
   useEffect(() => {
-    loadStructure();
+    loadTree();
+    loadVaultConfig();
     loadIndex();
-  }, [workspace?.rootPath, loadStructure, loadIndex]);
+  }, [workspace?.rootPath, loadTree, loadVaultConfig, loadIndex]);
+
+  const suggestedFolders = vaultConfig?.folder_template.folders ?? [];
+  const existingNames = new Set(tree?.children.map((c) => c.name) ?? []);
+  const missingFolders = suggestedFolders.filter((f) => !existingNames.has(f));
 
   const fileEntries = index?.entries.filter((e) => e.kind === "file") ?? [];
   const groupedByModule = fileEntries.reduce<Record<string, IndexEntry[]>>((acc, entry) => {
@@ -141,7 +237,7 @@ export function VaultPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Estrutura de pastas</CardTitle>
+            <CardTitle>Estrutura atual do vault</CardTitle>
             <CardDescription>
               {workspace?.rootPath || "Nenhum workspace selecionado"}
             </CardDescription>
@@ -150,11 +246,57 @@ export function VaultPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={loadStructure}
+              onClick={loadTree}
               disabled={isLoading}
               title="Atualizar"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {!tree && !error && (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma pasta encontrada.
+            </p>
+          )}
+
+          {tree && (
+            <div className="rounded-md border p-2">
+              <TreeNode node={tree} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Sugestão de estrutura</CardTitle>
+            <CardDescription>
+              {vaultConfig
+                ? `Template: ${vaultConfig.folder_template.name}`
+                : "Nenhum template carregado"}
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={applyTemplate}
+              disabled={isLoading || !workspace?.rootPath || missingFolders.length === 0}
+            >
+              {isLoading ? (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FolderOpen className="mr-2 h-4 w-4" />
+              )}
+              Aplicar sugestão
             </Button>
             <Button
               variant="outline"
@@ -166,35 +308,31 @@ export function VaultPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          {entries.length === 0 && !error && (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma pasta encontrada. Clique em "Criar estrutura" para inicializar o vault.
-            </p>
-          )}
-
           <div className="space-y-1">
-            {entries.map((entry) => (
-              <div
-                key={entry.name}
-                className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-mono">{entry.name}</span>
+            {suggestedFolders.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma pasta sugerida.
+              </p>
+            )}
+            {suggestedFolders.map((folder) => {
+              const exists = existingNames.has(folder);
+              return (
+                <div
+                  key={folder}
+                  className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono">{folder}</span>
+                  </div>
+                  {exists ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  )}
                 </div>
-                {entry.exists ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-destructive" />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

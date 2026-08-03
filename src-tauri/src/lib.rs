@@ -7,6 +7,7 @@ mod parser;
 mod projects;
 mod syncthing;
 mod vault;
+mod vaultconfig;
 
 use config::{ensure_config, is_first_run, load_config, save_config, AppConfig};
 use fs::{create_dir, list_dir, read_file, remove_dir, write_file, start_watcher};
@@ -30,7 +31,13 @@ use syncthing::{
     syncthing_health_check_command, syncthing_status_command, syncthing_system_status_command,
     SyncthingState,
 };
-use vault::{get_vault_structure_command, initialize_vault_command};
+use vault::{
+    get_vault_structure_command, get_vault_template_command, initialize_vault_command,
+    initialize_vault_with_folders_command, scan_vault_command,
+};
+use vaultconfig::{
+    ensure_vault_config_command, load_vault_config_command, save_vault_config_command,
+};
 use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
@@ -123,7 +130,13 @@ pub fn run() {
             is_first_run,
             get_log_path,
             initialize_vault_command,
+            initialize_vault_with_folders_command,
             get_vault_structure_command,
+            get_vault_template_command,
+            scan_vault_command,
+            ensure_vault_config_command,
+            load_vault_config_command,
+            save_vault_config_command,
             rebuild_index_command,
             get_index_command,
             parse_markdown_file_command,
