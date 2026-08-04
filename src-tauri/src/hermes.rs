@@ -205,7 +205,7 @@ fn build_prompt(
     parts.join("\n\n")
 }
 
-fn run_hermes_cli(prompt: &str) -> Result<String, String> {
+pub fn run_hermes_cli(prompt: &str) -> Result<String, String> {
     let program = if cfg!(target_os = "windows") {
         "hermes.exe"
     } else {

@@ -10,6 +10,7 @@ import { LorePage } from "@/pages/LorePage";
 import { VaultPage } from "@/pages/VaultPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { Onboarding } from "@/pages/Onboarding";
+import { StructuredOutputLab } from "@/pages/StructuredOutputLab";
 
 function AppRoutes() {
   const { isFirstRun, error, isLoading } = useWorkspace();
@@ -49,6 +50,7 @@ function AppRoutes() {
               { path: "projects", element: <ProjectsPage /> },
               { path: "projects/new", element: <NewProjectPage /> },
               { path: "chat", element: <ChatPage /> },
+              { path: "structured-output", element: <StructuredOutputLab /> },
               { path: "npc", element: <NPCPage /> },
               { path: "lore", element: <LorePage /> },
               { path: "vault", element: <VaultPage /> },

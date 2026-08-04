@@ -765,24 +765,23 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ---
 
-#### ⏳ Slice 5.4 — Structured Output
+#### ✅ Slice 5.4 — Structured Output
 - Skill: "gerar NPC estruturado" (Hermes gera YAML com delimitadores)
-- Parser de resposta (extrair entre `---NPC_START---` e `---NPC_END---`)
-- YAML parser (serde_yaml)
-- Validação de schema
-- Error handling (YAML inválido)
-- Output preenche os arquivos do template escolhido pelo usuário
-
-**Contexto:**
-- Usado apenas quando o usuário escolher a opção "Gerar com Hermes" no fluxo de criação.
-- Não é mais o caminho obrigatório de criação (ver nova filosofia do projeto).
+- Parser de resposta (extrair entre `---YAML_START---` e `---YAML_END---`)
+- YAML parser (`serde_yaml`)
+- Validação de schema básica
+- Error handling (YAML inválido, delimitadores ausentes)
+- Formatação para markdown + visual-dna + prompt.md
+- Laboratório de Structured Output no frontend para testar a pipeline
+- Output preenche os arquivos de template escolhido pelo usuário
 
 **Critérios de pronto:**
-- ⏳ Hermes gera output estruturado
-- ⏳ Parser extrai YAML
-- ⏳ Validação funciona
-- ⏳ Erros são tratados
-- ⏳ Output preenche arquivos de template
+- ✅ Hermes gera output estruturado com delimitadores
+- ✅ Backend parseia o YAML
+- ✅ Validação funciona
+- ✅ Erros são tratados
+- ✅ Formato markdown/visual-dna/prompt gerados
+- ✅ Laboratório frontend permite testar NPC e Lore
 
 ---
 
@@ -1039,9 +1038,9 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 | Fase 2 — Vault Engine | 4 slices | 🔄 Em andamento | ~12 horas |
 | Fase 3 — Syncthing | 6 slices | ✅ Concluída | ~12 horas |
 | Fase 4 — Dashboard | 3 slices | ✅ Concluída (com revisão Inter-fases) | ~10 horas |
-| Fase 5 — Módulos | 9 slices | 🔄 Em andamento (2/9 concluídos) | ~45 horas |
+| Fase 5 — Módulos | 9 slices | 🔄 Em andamento (3/9 concluídos) | ~45 horas |
 | Fase 6 — Polish | 6 slices | ⏳ Pendente | ~18 horas |
-| **TOTAL** | **~32 slices** | **Fases 1–4 concluídas + 5.1 e 5.2 concluídos** | **~109 horas** |
+| **TOTAL** | **~32 slices** | **Fases 1–4 concluídas + 5.1, 5.2 e 5.4 concluídos** | **~109 horas** |
 
 ---
 
@@ -1049,7 +1048,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 Quando estiver pronto para codar:
 1. Continue a sessão no Hermes
-2. Pergunte: "Vamos prosseguir para o Slice 5.4?"
-3. Implementar o Slice 5.4 — Structured Output
+2. Pergunte: "Vamos prosseguir para o Slice 5.5?"
+3. Implementar o Slice 5.5 — Sistema de Templates
 
 Boa implementação! 🚀

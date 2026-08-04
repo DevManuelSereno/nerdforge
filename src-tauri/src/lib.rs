@@ -5,6 +5,7 @@ mod hermes;
 mod logging;
 mod parser;
 mod projects;
+mod structured_output;
 mod syncthing;
 mod vault;
 mod vaultconfig;
@@ -20,6 +21,7 @@ use hermes::{
     chat_with_hermes_command, list_conversations_command, load_conversation_command,
     summarize_conversation_command,
 };
+use structured_output::generate_structured_output_command;
 use projects::{
     create_project_command, get_dashboard_data_command, get_recent_activities_command,
     list_projects_command,
@@ -151,6 +153,7 @@ pub fn run() {
             load_conversation_command,
             chat_with_hermes_command,
             summarize_conversation_command,
+            generate_structured_output_command,
             start_syncthing_command,
             stop_syncthing_command,
             syncthing_status_command,

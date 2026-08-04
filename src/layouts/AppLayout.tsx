@@ -1,5 +1,5 @@
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { Home, FolderKanban, MessageSquare, Users, BookOpen, Settings, FolderOpen, Menu, X } from "lucide-react";
+import { Home, FolderKanban, MessageSquare, Users, BookOpen, Settings, FolderOpen, Menu, X, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -8,6 +8,7 @@ const navItems = [
   { path: "/", label: "Dashboard", icon: Home },
   { path: "/projects", label: "Projetos", icon: FolderKanban },
   { path: "/chat", label: "Chat", icon: MessageSquare },
+  { path: "/structured-output", label: "Structured Output", icon: Wand2 },
   { path: "/npc", label: "NPCs", icon: Users },
   { path: "/lore", label: "Lore", icon: BookOpen },
   { path: "/vault", label: "Vault", icon: FolderOpen },
