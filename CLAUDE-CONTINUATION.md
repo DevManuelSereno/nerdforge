@@ -265,7 +265,16 @@ Se estiver no Hermes, não edite skills/plugins/cron/memories de outro perfil se
 - Não faça `git commit` ou `git push` sem permissão explícita.
 - Pode inicializar/configurar Git, criar `.gitignore`, README, etc., mas pergunte antes de commitar.
 
-### 8.3 Processos em execução
+### 8.3 Mensagens de commit
+
+Regras para quando o usuário pedir para gerar uma mensagem de commit:
+
+- Sempre gere um **commit semântico** (Conventional Commits, ex: `feat(escopo): resumo` + corpo), seguindo boas práticas de clareza, legibilidade e entendimento.
+- **Não gere** a mensagem de imediato / por conta própria. Espere o usuário pedir explicitamente ("gere a msg de commit").
+- **Não faça** nenhum commit automático. Retorne a mensagem na conversa e espere o usuário commitar manualmente.
+- **Não inclua** o comando pronto (git-bash). Basta retornar **somente** a mensagem de commit.
+
+### 8.4 Processos em execução
 
 Antes de rodar `npm run tauri build` ou `npm run tauri dev`, mate processos antigos:
 
@@ -274,11 +283,11 @@ taskkill //IM nerdforge.exe //F 2>/dev/null || true
 taskkill //IM syncthing.exe //F 2>/dev/null || true
 ```
 
-### 8.4 Aviso de Node
+### 8.5 Aviso de Node
 
 O warning do Vite sobre Node `20.19+` é inofensivo. Não quebra o build.
 
-### 8.5 Persistência de workspace
+### 8.6 Persistência de workspace
 
 O workspace atual é salvo em memória (React Context). A persistência real (YAML de config) já existe no backend via `config.rs`, mas o frontend pode precisar de refresh ao reabrir.
 

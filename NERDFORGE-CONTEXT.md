@@ -1035,6 +1035,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 - **Você revisa tudo** antes de avançar para o próximo slice
 - **Dúvidas são resolvidas no planejamento**, não durante implementação
 - **Cada vertical slice tem critérios de "pronto"** definidos antes de começar
+- **Mensagens de commit:** sempre commit semântico (Conventional Commits) seguindo boas práticas de clareza/legibilidade. Não gero a mensagem por conta própria — só quando você pedir explicitamente. Nunca commito/push automaticamente — retorno a mensagem na conversa e você commita manualmente. Não incluo o comando git-bash, apenas a mensagem.
 
 ---
 
