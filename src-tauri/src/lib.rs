@@ -7,6 +7,7 @@ mod parser;
 mod projects;
 mod structured_output;
 mod syncthing;
+mod templates;
 mod vault;
 mod vaultconfig;
 
@@ -22,6 +23,10 @@ use hermes::{
     summarize_conversation_command,
 };
 use structured_output::generate_structured_output_command;
+use templates::{
+    apply_template_command, create_blank_entity_command, list_templates_command,
+    save_custom_template_command,
+};
 use projects::{
     create_project_command, get_dashboard_data_command, get_recent_activities_command,
     list_projects_command,
@@ -154,6 +159,10 @@ pub fn run() {
             chat_with_hermes_command,
             summarize_conversation_command,
             generate_structured_output_command,
+            list_templates_command,
+            apply_template_command,
+            create_blank_entity_command,
+            save_custom_template_command,
             start_syncthing_command,
             stop_syncthing_command,
             syncthing_status_command,

@@ -19,7 +19,7 @@ pub struct FolderTemplate {
     pub folders: Vec<String>,
 }
 
-fn default_folder_map() -> HashMap<String, String> {
+pub fn default_folder_map() -> HashMap<String, String> {
     let mut map = HashMap::new();
     map.insert("npc".to_string(), "npcs".to_string());
     map.insert("lore".to_string(), "lore".to_string());

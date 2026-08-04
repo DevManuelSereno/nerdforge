@@ -785,7 +785,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ---
 
-#### ⏳ Slice 5.5 — Sistema de Templates
+#### ✅ Slice 5.5 — Sistema de Templates
 - Criar módulo `templates.rs` genérico (reutilizado por todos os módulos)
 - Diretório `.nerdforge/templates/` com templates embutidos:
   - `npc-default.yaml`
@@ -794,22 +794,26 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
   - `location-default.yaml`
 - Formato YAML de template com placeholders (`{{id}}`, `{{date}}`, `{{name}}`)
 - Backend:
-  - `list_templates(module)` — lista templates disponíveis para um módulo
-  - `load_template(path)` — carrega template específico
+  - `list_templates(module)` — lista templates disponíveis para um módulo (inclui customizados)
+  - `load_builtin_template(module, name)` — carrega template embutido
   - `apply_template(template, name, root)` — gera arquivos a partir do template
   - `create_blank_entity(module, name, root)` — cria estrutura vazia ("criar do zero")
-  - `save_custom_template(template)` — salva template customizado
+  - `save_custom_template(template)` — salva template customizado em `.nerdforge/templates/<module>/<slug>.yaml`
 - Commands Tauri expostos ao frontend
-- Substituição de placeholders (`{{id}}`, `{{date}}`, `{{name}}`)
+- Substituição de placeholders (`{{id}}`, `{{date}}`, `{{name}}`, `{{slug}}`, `{{module}}`)
+- Integração com `vaultconfig.yaml` para resolver pasta do módulo via `folder_map`
 - Testes para aplicação, criação do zero, templates customizados
+- Frontend: `NPCPage` com fluxo de criação (template / Hermes / do zero)
 
 **Critérios de pronto:**
-- ⏳ Templates embutidos existem para NPC, Lore, Faction, Location
-- ⏳ Posso listar templates por módulo
-- ⏳ Aplicar template gera arquivos no vault
-- ⏳ Criar do zero gera estrutura mínima
-- ⏳ Templates customizados podem ser salvos e reutilizados
-- ⏳ Placeholders são substituídos corretamente
+- ✅ Templates embutidos existem para NPC, Lore, Faction, Location
+- ✅ Posso listar templates por módulo
+- ✅ Aplicar template gera arquivos no vault
+- ✅ Criar do zero gera estrutura mínima
+- ✅ Templates customizados podem ser salvos e reutilizados
+- ✅ Placeholders são substituídos corretamente
+- ✅ Integração com `vaultconfig.yaml` via `folder_map`
+- ✅ `NPCPage` permite criar NPC via template
 
 **Dívida futura (fora do escopo mínimo):**
 - Editor visual de templates dentro do NerdForge (atualmente editados via arquivo YAML)
@@ -847,6 +851,10 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 **Atualização após Slice 2.4:**
 - O módulo deve consultar `vaultconfig.yaml` para descobrir a pasta destino de NPC (padrão `folder_map.npc`, fallback `npcs/`).
 - Se a pasta não existir, o módulo pode criá-la ou alertar o usuário.
+
+**Atualização após Slice 5.5:**
+- A criação de NPC já usa `list_templates_command`, `apply_template_command` e `create_blank_entity_command`.
+- Falta integrar "Gerar com Hermes" ao fluxo e adicionar visualização/dashboard de NPCs existentes.
 
 ---
 
@@ -1038,9 +1046,9 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 | Fase 2 — Vault Engine | 4 slices | 🔄 Em andamento | ~12 horas |
 | Fase 3 — Syncthing | 6 slices | ✅ Concluída | ~12 horas |
 | Fase 4 — Dashboard | 3 slices | ✅ Concluída (com revisão Inter-fases) | ~10 horas |
-| Fase 5 — Módulos | 9 slices | 🔄 Em andamento (3/9 concluídos) | ~45 horas |
+| Fase 5 — Módulos | 9 slices | 🔄 Em andamento (4/9 concluídos) | ~45 horas |
 | Fase 6 — Polish | 6 slices | ⏳ Pendente | ~18 horas |
-| **TOTAL** | **~32 slices** | **Fases 1–4 concluídas + 5.1, 5.2 e 5.4 concluídos** | **~109 horas** |
+| **TOTAL** | **~32 slices** | **Fases 1–4 concluídas + 5.1, 5.2, 5.4 e 5.5 concluídos** | **~109 horas** |
 
 ---
 
@@ -1048,7 +1056,5 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 Quando estiver pronto para codar:
 1. Continue a sessão no Hermes
-2. Pergunte: "Vamos prosseguir para o Slice 5.5?"
-3. Implementar o Slice 5.5 — Sistema de Templates
-
-Boa implementação! 🚀
+2. Pergunte: "Vamos prosseguir para o Slice 5.6?"
+3. Implementar o Slice 5.6 — Módulo NPC (dashboard + integração com Obsidian + visualização)
