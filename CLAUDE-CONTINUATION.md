@@ -273,6 +273,7 @@ Regras para quando o usuário pedir para gerar uma mensagem de commit:
 - **Não gere** a mensagem de imediato / por conta própria. Espere o usuário pedir explicitamente ("gere a msg de commit").
 - **Não faça** nenhum commit automático. Retorne a mensagem na conversa e espere o usuário commitar manualmente.
 - **Não inclua** o comando pronto (git-bash). Basta retornar **somente** a mensagem de commit.
+- Apresente a mensagem em formato fácil de copiar e colar (bloco de código), para o usuário copiar direto.
 
 ### 8.4 Processos em execução
 
