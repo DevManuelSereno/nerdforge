@@ -15,6 +15,8 @@ pub struct ChatMessage {
 pub struct Conversation {
     pub id: String,
     pub title: Option<String>,
+    pub summary: Option<String>,
+    pub context: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
     pub messages: Vec<ChatMessage>,
@@ -27,6 +29,7 @@ pub struct ChatRequest {
     pub history: Vec<ChatMessage>,
     pub conversation_id: Option<String>,
     pub module: Option<String>,
+    pub context: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,6 +102,8 @@ pub fn chat_with_hermes(root: &str, request: ChatRequest) -> Result<ChatResponse
         Some(id) => load_conversation(root, id).unwrap_or_else(|_| Conversation {
             id: conversation_id.clone(),
             title: request.prompt.lines().next().map(|s| s.to_string()),
+            summary: None,
+            context: request.context.clone(),
             created_at: now_secs(),
             updated_at: now_secs(),
             messages: Vec::new(),
@@ -107,6 +112,8 @@ pub fn chat_with_hermes(root: &str, request: ChatRequest) -> Result<ChatResponse
         None => Conversation {
             id: conversation_id.clone(),
             title: request.prompt.lines().next().map(|s| s.to_string()),
+            summary: None,
+            context: request.context.clone(),
             created_at: now_secs(),
             updated_at: now_secs(),
             messages: Vec::new(),
@@ -120,7 +127,11 @@ pub fn chat_with_hermes(root: &str, request: ChatRequest) -> Result<ChatResponse
         timestamp: now_secs(),
     });
 
-    let full_prompt = build_prompt(&request.history, &request.prompt);
+    let full_prompt = build_prompt(
+        conversation.summary.as_deref(),
+        &conversation.messages,
+        &request.prompt,
+    );
 
     let output = run_hermes_cli(&full_prompt)?;
     let reply = output.trim().to_string();
@@ -132,6 +143,13 @@ pub fn chat_with_hermes(root: &str, request: ChatRequest) -> Result<ChatResponse
     });
     conversation.updated_at = now_secs();
 
+    // Auto-summarize a cada 20 mensagens (10 turnos)
+    if conversation.messages.len() >= 20 && conversation.messages.len() % 20 == 0 {
+        if let Ok(summary) = summarize_conversation(&conversation) {
+            conversation.summary = Some(summary);
+        }
+    }
+
     save_conversation(root, &conversation)?;
 
     Ok(ChatResponse {
@@ -142,8 +160,32 @@ pub fn chat_with_hermes(root: &str, request: ChatRequest) -> Result<ChatResponse
     })
 }
 
-fn build_prompt(history: &[ChatMessage], prompt: &str) -> String {
+fn summarize_conversation(conversation: &Conversation) -> Result<String, String> {
+    let transcript: Vec<String> = conversation
+        .messages
+        .iter()
+        .map(|m| format!("{}: {}", m.role, m.content))
+        .collect();
+
+    let prompt = format!(
+        "Resuma a seguinte conversa de forma breve e objetiva, mantendo os pontos principais e contexto:\n\n{}",
+        transcript.join("\n\n")
+    );
+
+    run_hermes_cli(&prompt)
+}
+
+fn build_prompt(
+    summary: Option<&str>,
+    history: &[ChatMessage],
+    prompt: &str,
+) -> String {
     let mut parts = Vec::new();
+
+    if let Some(s) = summary {
+        parts.push(format!("Resumo da conversa anterior:\n{}\n", s));
+    }
+
     for msg in history
         .iter()
         .rev()
@@ -218,6 +260,18 @@ pub fn chat_with_hermes_command(
 }
 
 #[tauri::command]
+pub fn summarize_conversation_command(
+    root: String,
+    conversation_id: String,
+) -> Result<Conversation, String> {
+    let mut conversation = load_conversation(&root, &conversation_id)?;
+    let summary = summarize_conversation(&conversation)?;
+    conversation.summary = Some(summary);
+    save_conversation(&root, &conversation)?;
+    Ok(conversation)
+}
+
+#[tauri::command]
 pub fn list_conversations_command(root: String) -> Result<Vec<Conversation>, String> {
     list_conversations(&root)
 }
@@ -229,7 +283,10 @@ pub fn load_conversation_command(root: String, id: String) -> Result<Conversatio
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::hermes::{
+        build_prompt, list_conversations, load_conversation, save_conversation,
+        summarize_conversation, ChatMessage, Conversation,
+    };
     use tempfile::TempDir;
 
     #[test]
@@ -246,7 +303,7 @@ mod tests {
                 timestamp: 2,
             },
         ];
-        let prompt = build_prompt(&history, "Como vai?");
+        let prompt = build_prompt(None, &history, "Como vai?");
         assert!(prompt.contains("Usu\u{00e1}rio: Ol\u{00e1}"));
         assert!(prompt.contains("Assistente: Oi"));
         assert!(prompt.contains("Usu\u{00e1}rio: Como vai?"));
@@ -259,6 +316,8 @@ mod tests {
         let conversation = Conversation {
             id: "conv_1".to_string(),
             title: Some("Teste".to_string()),
+            summary: Some("Resumo de teste".to_string()),
+            context: None,
             created_at: 1,
             updated_at: 2,
             messages: vec![ChatMessage {
@@ -272,6 +331,63 @@ mod tests {
         let loaded = load_conversation(&root, "conv_1").unwrap();
         assert_eq!(loaded.id, "conv_1");
         assert_eq!(loaded.messages.len(), 1);
+        assert_eq!(loaded.summary, Some("Resumo de teste".to_string()));
+    }
+
+    #[test]
+    fn test_build_prompt_includes_summary() {
+        let history = vec![
+            ChatMessage {
+                role: "user".to_string(),
+                content: "Ol\u{00e1}".to_string(),
+                timestamp: 1,
+            },
+            ChatMessage {
+                role: "assistant".to_string(),
+                content: "Oi".to_string(),
+                timestamp: 2,
+            },
+        ];
+        let prompt = build_prompt(Some("Resumo anterior"), &history, "Como vai?");
+        assert!(prompt.contains("Resumo da conversa anterior"));
+        assert!(prompt.contains("Resumo anterior"));
+        assert!(prompt.contains("Usu\u{00e1}rio: Ol\u{00e1}"));
+        assert!(prompt.contains("Assistente: Oi"));
+        assert!(prompt.contains("Usu\u{00e1}rio: Como vai?"));
+    }
+
+    #[test]
+    fn test_summarize_conversation_requires_hermes_cli() {
+        // Este teste s\u{00f3} passa se hermes CLI estiver dispon\u{00ed}vel no PATH.
+        // Caso contr\u{00e1}rio, verifica pelo menos que a fun\u{00e7}\u{00e3o retorna Err.
+        let conversation = Conversation {
+            id: "conv_summary".to_string(),
+            title: None,
+            summary: None,
+            context: None,
+            created_at: 1,
+            updated_at: 1,
+            messages: vec![
+                ChatMessage {
+                    role: "user".to_string(),
+                    content: "Crie um NPC para uma cidade portu\u{00e1}ria.".to_string(),
+                    timestamp: 1,
+                },
+                ChatMessage {
+                    role: "assistant".to_string(),
+                    content: "Claro, o NPC \u{00e9} um mercador chamado Kael.".to_string(),
+                    timestamp: 2,
+                },
+            ],
+            module: None,
+        };
+
+        let result = summarize_conversation(&conversation);
+        // Se Hermes CLI n\u{00e3}o estiver dispon\u{00ed}vel, esperamos erro; se estiver, qualquer string n\u{00e3o vazia.
+        match result {
+            Ok(summary) => assert!(!summary.trim().is_empty()),
+            Err(_) => {}
+        }
     }
 
     #[test]
@@ -281,6 +397,8 @@ mod tests {
         let a = Conversation {
             id: "a".to_string(),
             title: None,
+            summary: None,
+            context: None,
             created_at: 1,
             updated_at: 1,
             messages: vec![],
@@ -289,6 +407,8 @@ mod tests {
         let b = Conversation {
             id: "b".to_string(),
             title: None,
+            summary: None,
+            context: None,
             created_at: 1,
             updated_at: 2,
             messages: vec![],

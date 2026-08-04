@@ -674,6 +674,42 @@ Legenda:
 
 ---
 
+### Nova Filosofia do Projeto (a partir da Fase 5)
+
+> **NerdForge é um hub de visualização e geração de estruturas. O Obsidian é o editor. O Hermes é uma ferramenta opcional de geração.**
+
+Os três pilares:
+
+| Ferramenta | Função |
+|---|---|
+| **NerdForge** | Template Generator + Dashboard de entidades + integração IA (opcional) |
+| **Obsidian** | Editor de prosa, backlinks, graph view, plugins |
+| **Hermes** | Gerador opcional de conteúdo via chat |
+
+O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
+- Criar entidades do zero a partir de templates
+- Gerar com Hermes quando quiser ajuda criativa
+- Editar tudo no Obsidian
+- Visualizar a estrutura do projeto no NerdForge
+
+**Modo primário de criação:** todo módulo (NPC, Lore, Faction, Location) oferece uma tríade de opções:
+
+1. **Escolher template pronto** (lista com padrão + customizados)
+2. **Gerar com Hermes** (usa structured output)
+3. **Criar do zero** (estrutura mínima vazia)
+
+**Integração com Obsidian:**
+- Ao criar qualquer entidade, abre automaticamente no Obsidian (se instalado).
+- Fallback silencioso: se Obsidian não for detectado, abre com editor padrão do sistema.
+- Conteúdo renderizado no NerdForge é **só leitura**. Toda edição de prosa acontece no Obsidian.
+- Botão "Atualizar" (refresh manual) no dashboard detecta mudanças feitas no Obsidian.
+
+**Edição de templates:**
+- Templates YAML podem ser editados diretamente no sistema de arquivos.
+- Futuro (pós-fases planejadas): editor visual de templates dentro do NerdForge.
+
+---
+
 #### ✅ Slice 5.1 — Hermes CLI Integration
 - Tauri command: `chat_with_hermes(prompt, history)`
 - Spawn `hermes` CLI como child process
@@ -689,32 +725,43 @@ Legenda:
 
 ---
 
-#### ⏳ Slice 5.2 — Contexto de Conversa
-- Estrutura de dados: `Conversation { messages, npc_context }`
-- Monta prompt com histórico (últimas 20 mensagens)
-- Auto-summarize (a cada 20 mensagens, gera resumo)
+#### ✅ Slice 5.2 — Contexto de Conversa
+- Estrutura de dados: `Conversation { messages, summary, context, npc_context }`
+- Monta prompt com histórico (últimas 20 mensagens) + resumo da conversa
+- Auto-summarize (a cada 20 mensagens, gera resumo via Hermes CLI)
 - Persiste conversa localmente (`.nerdforge/conversations/`)
+- Sidebar de conversas no chat: listar, carregar, nova conversa
+- Botão manual "Resumir conversa"
 
 **Critérios de pronto:**
-- ⏳ Histórico é mantido
-- ⏳ Prompt inclui contexto
-- ⏳ Auto-summarize funciona
-- ⏳ Conversa é persistida
+- ✅ Histórico é mantido
+- ✅ Prompt inclui contexto + resumo
+- ✅ Auto-summarize funciona
+- ✅ Conversa é persistida
+- ✅ Lista e carregamento de conversas na UI
+
+**Atualização após Slice 2.4:**
+- Quando o contexto de conversa for específico de um módulo (NPC, Lore, etc.), o backend pode usar `vaultconfig.yaml` para resolver a pasta de destino ao salvar a entidade.
 
 ---
 
-#### ⏳ Slice 5.3 — UI de Chat
+#### ⏸️ Slice 5.3 — UI de Chat (ADIADA)
 - Componente React: `ChatInterface`
 - Bolhas de mensagem (user + hermes)
 - Loading state rico (animação, texto rotativo, progress bar fake)
 - Animação de "digitação" quando resposta chega (1-2s)
 - Histórico de conversa (scroll, busca)
 
-**Critérios de pronto:**
-- ⏳ Chat UI funcional
-- ⏳ Loading state agradável
-- ⏳ Animação de digitação
-- ⏳ Histórico scrollável
+**Motivo da adiamento:**
+- O chat deixou de ser o modo primário de criação (ver nova filosofia abaixo).
+- A UI básica implementada no Slice 5.2 é suficiente para o fluxo opcional de Hermes.
+- Pode ser revisitada no futuro se houver demanda.
+
+**Critérios de pronto (quando retomada):**
+- ⏸️ Chat UI funcional
+- ⏸️ Loading state agradável
+- ⏸️ Animação de digitação
+- ⏸️ Histórico scrollável
 
 ---
 
@@ -724,29 +771,79 @@ Legenda:
 - YAML parser (serde_yaml)
 - Validação de schema
 - Error handling (YAML inválido)
+- Output preenche os arquivos do template escolhido pelo usuário
+
+**Contexto:**
+- Usado apenas quando o usuário escolher a opção "Gerar com Hermes" no fluxo de criação.
+- Não é mais o caminho obrigatório de criação (ver nova filosofia do projeto).
 
 **Critérios de pronto:**
 - ⏳ Hermes gera output estruturado
 - ⏳ Parser extrai YAML
 - ⏳ Validação funciona
 - ⏳ Erros são tratados
+- ⏳ Output preenche arquivos de template
 
 ---
 
-#### ⏳ Slice 5.5 — Módulo NPC
-- Botão "Novo NPC" abre chat
-- Hermes faz perguntas (concept, contexto, função narrativa)
-- Usuário responde, Hermes refina
-- Após 3-5 mensagens, Hermes gera output estruturado
-- Cards editáveis (lore, Visual DNA, Visual Prompt)
-- Botão "Aprovar e Salvar"
-- Salva em `npcs/<nome-do-npc>/`
+#### ⏳ Slice 5.5 — Sistema de Templates
+- Criar módulo `templates.rs` genérico (reutilizado por todos os módulos)
+- Diretório `.nerdforge/templates/` com templates embutidos:
+  - `npc-default.yaml`
+  - `lore-default.yaml`
+  - `faction-default.yaml`
+  - `location-default.yaml`
+- Formato YAML de template com placeholders (`{{id}}`, `{{date}}`, `{{name}}`)
+- Backend:
+  - `list_templates(module)` — lista templates disponíveis para um módulo
+  - `load_template(path)` — carrega template específico
+  - `apply_template(template, name, root)` — gera arquivos a partir do template
+  - `create_blank_entity(module, name, root)` — cria estrutura vazia ("criar do zero")
+  - `save_custom_template(template)` — salva template customizado
+- Commands Tauri expostos ao frontend
+- Substituição de placeholders (`{{id}}`, `{{date}}`, `{{name}}`)
+- Testes para aplicação, criação do zero, templates customizados
 
 **Critérios de pronto:**
-- ⏳ Fluxo conversacional funciona
-- ⏳ Cards editáveis
-- ⏳ Aprovação salva nos arquivos
-- ⏳ NPC aparece na lista
+- ⏳ Templates embutidos existem para NPC, Lore, Faction, Location
+- ⏳ Posso listar templates por módulo
+- ⏳ Aplicar template gera arquivos no vault
+- ⏳ Criar do zero gera estrutura mínima
+- ⏳ Templates customizados podem ser salvos e reutilizados
+- ⏳ Placeholders são substituídos corretamente
+
+**Dívida futura (fora do escopo mínimo):**
+- Editor visual de templates dentro do NerdForge (atualmente editados via arquivo YAML)
+- Compartilhamento de templates entre projetos
+- Galeria de templates da comunidade
+
+---
+
+#### ⏳ Slice 5.6 — Módulo NPC
+- Dashboard de NPCs (grid/lista de cards)
+- Cada card mostra: nome, tags, status, thumbnail do portrait
+- Botão "Novo NPC" com 3 opções:
+  1. **"Escolher template pronto"**: lista de templates disponíveis (padrão + customizados)
+  2. **"Gerar com Hermes"**: usa structured output (5.4)
+  3. **"Criar do zero"**: gera estrutura mínima vazia
+- Ao criar (qualquer opção): abre automaticamente no Obsidian (se instalado)
+- Visualização do NPC (só leitura):
+  - Conteúdo de `index.md` renderizado como markdown
+  - `visual-dna.yaml` formatado
+  - `prompt.md` com botão "copiar para clipboard"
+  - Portrait (se existir)
+- Botões de ação: "Editar no Obsidian", "Regenerar Visual DNA" (5.7), "Regenerar Visual Prompt", "Excluir"
+- Botão "Atualizar" (refresh manual) para detectar edições feitas no Obsidian
+
+**Critérios de pronto:**
+- ⏳ Dashboard de NPCs funcional
+- ⏳ Botão "Novo NPC" com 3 opções de criação
+- ⏳ Templates embutidos aplicados corretamente
+- ⏳ Criação via Hermes funciona (usa 5.4)
+- ⏳ Criação do zero gera estrutura mínima
+- ⏳ Botão "Editar no Obsidian" funciona
+- ⏳ Visualização do NPC (só leitura)
+- ⏳ Botão refresh detecta mudanças do Obsidian
 
 **Atualização após Slice 2.4:**
 - O módulo deve consultar `vaultconfig.yaml` para descobrir a pasta destino de NPC (padrão `folder_map.npc`, fallback `npcs/`).
@@ -754,7 +851,7 @@ Legenda:
 
 ---
 
-#### ⏳ Slice 5.6 — Regeneração Rápida
+#### ⏳ Slice 5.7 — Regeneração Rápida
 - Botões: "Regenerar Lore", "Regenerar Visual DNA", "Regenerar Visual Prompt"
 - Cada chamada é independente (sem conversa)
 - Histórico de versões (salva versão anterior em `history/v1.md`)
@@ -769,36 +866,37 @@ Legenda:
 
 ---
 
-#### ⏳ Slice 5.7 — Módulo Lore
-- Reusa 80% da infra do NPC
+#### ⏳ Slice 5.8 — Módulo Lore
+- Dashboard de artigos de lore
+- Mesma tríade de criação do NPC: template pronto / gerar com Hermes / criar do zero
+- Reusa 80% da infra do Slice 5.6 (NPC)
 - Estrutura: `lore/<categoria>/<titulo>/index.md`
-- Chat para criar artigos de lore
+- Template padrão com seções pré-formatadas
 - Tags e cross-references
+- Visualização só leitura + botão "Editar no Obsidian"
 
 **Critérios de pronto:**
-- ⏳ Criar lore via chat
+- ⏳ Dashboard de lore funcional
+- ⏳ 3 modos de criação (template / Hermes / do zero)
 - ⏳ Salva na estrutura correta
 - ⏳ Lista de artigos de lore
-
-**Atualização após Slice 2.4:**
-- Consultar `vaultconfig.yaml` (`folder_map.lore`, fallback `lore/`).
+- ⏳ Integração com Obsidian
 
 ---
 
-#### ⏳ Slice 5.8 — Módulos Factions e Locations
-- Similar ao Lore
+#### ⏳ Slice 5.9 — Módulos Factions e Locations
+- Mesma arquitetura do Slice 5.8 (Lore)
 - Factions: `factions/<nome>/index.md`
 - Locations: `locations/<nome>/index.md`
+- Reusa 90% da infra do NPC (Slice 5.6)
 - Cross-referencing com NPCs
+- Templates embutidos para cada módulo
 
 **Critérios de pronto:**
-- ⏳ Factions criáveis
-- ⏳ Locations criáveis
+- ⏳ Factions criáveis (3 modos)
+- ⏳ Locations criáveis (3 modos)
 - ⏳ Referências entre entidades
-
-**Atualização após Slice 2.4:**
-- Factions: consultar `folder_map.faction` (fallback `factions/`).
-- Locations: consultar `folder_map.location` (fallback `locations/`).
+- ⏳ Templates embutidos
 
 ---
 
@@ -941,9 +1039,9 @@ Legenda:
 | Fase 2 — Vault Engine | 4 slices | 🔄 Em andamento | ~12 horas |
 | Fase 3 — Syncthing | 6 slices | ✅ Concluída | ~12 horas |
 | Fase 4 — Dashboard | 3 slices | ✅ Concluída (com revisão Inter-fases) | ~10 horas |
-| Fase 5 — Módulos | 8 slices | 🔄 Em andamento (1/8 concluído) | ~40 horas |
+| Fase 5 — Módulos | 9 slices | 🔄 Em andamento (2/9 concluídos) | ~45 horas |
 | Fase 6 — Polish | 6 slices | ⏳ Pendente | ~18 horas |
-| **TOTAL** | **~31 slices** | **Fases 1–4 concluídas + 5.1 concluído** | **~104 horas** |
+| **TOTAL** | **~32 slices** | **Fases 1–4 concluídas + 5.1 e 5.2 concluídos** | **~109 horas** |
 
 ---
 
@@ -951,7 +1049,7 @@ Legenda:
 
 Quando estiver pronto para codar:
 1. Continue a sessão no Hermes
-2. Pergunte: "Vamos prosseguir para o Slice 5.2?"
-3. Implementar o Slice 5.2 — Contexto de Conversa
+2. Pergunte: "Vamos prosseguir para o Slice 5.4?"
+3. Implementar o Slice 5.4 — Structured Output
 
 Boa implementação! 🚀
