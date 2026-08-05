@@ -24,6 +24,7 @@ import {
   BookOpen,
   Palette,
   Terminal,
+  ExternalLink,
 } from "lucide-react";
 
 interface TemplateFile {
@@ -87,6 +88,9 @@ export function NPCPage() {
   const [filesLoading, setFilesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"lore" | "visual" | "prompt">("lore");
   const [copied, setCopied] = useState(false);
+  const [obsidianAvailable, setObsidianAvailable] = useState<boolean | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [checkingChanges, setCheckingChanges] = useState(false);
   const [result, setResult] = useState<ApplyTemplateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +127,33 @@ export function NPCPage() {
     }
   }, [workspace?.rootPath]);
 
+  const checkObsidian = useCallback(async () => {
+    try {
+      const available = await invoke<boolean>("is_obsidian_available_command");
+      setObsidianAvailable(available);
+    } catch {
+      setObsidianAvailable(false);
+    }
+  }, []);
+
+  const checkNpcChanges = useCallback(async (npc: NpcSummary) => {
+    if (!workspace?.rootPath) return;
+    setCheckingChanges(true);
+    try {
+      const changed = await invoke<boolean>("npc_changed_command", {
+        root: workspace.rootPath,
+        relativePath: npc.relative_path,
+        lastModified: npc.last_modified,
+      });
+      setHasChanges(changed);
+    } catch {
+      // Silently ignore; user can still refresh manually.
+      setHasChanges(false);
+    } finally {
+      setCheckingChanges(false);
+    }
+  }, [workspace?.rootPath]);
+
   const loadNpcFiles = useCallback(async (npc: NpcSummary) => {
     if (!workspace?.rootPath) return;
     setFilesLoading(true);
@@ -153,8 +184,10 @@ export function NPCPage() {
   useEffect(() => {
     if (mode === "view" && selectedNpc) {
       loadNpcFiles(selectedNpc);
+      checkObsidian();
+      checkNpcChanges(selectedNpc);
     }
-  }, [mode, selectedNpc, loadNpcFiles]);
+  }, [mode, selectedNpc, loadNpcFiles, checkObsidian, checkNpcChanges]);
 
   function resetFlow() {
     setMode("dashboard");
@@ -166,6 +199,9 @@ export function NPCPage() {
     setError(null);
     setActiveTab("lore");
     setCopied(false);
+    setObsidianAvailable(null);
+    setHasChanges(false);
+    setCheckingChanges(false);
   }
 
   function handleCreated() {
@@ -240,11 +276,23 @@ export function NPCPage() {
     }
   }
 
-  function handleOpenInObsidian() {
+  async function handleOpenInObsidian() {
     if (!selectedNpc?.absolute_path) return;
-    // 5.6c will implement real Obsidian integration.
-    // For now, expose the path so the user can open it manually.
-    setError(`Abertura no Obsidian será implementada no Slice 5.6c. Pasta: ${selectedNpc.absolute_path}`);
+    setError(null);
+    try {
+      await invoke("open_in_obsidian_command", {
+        path: selectedNpc.absolute_path,
+      });
+    } catch (err) {
+      setError(`Falha ao abrir no Obsidian: ${err}`);
+    }
+  }
+
+  async function handleRefreshNpc() {
+    if (!selectedNpc) return;
+    setError(null);
+    await loadNpcFiles(selectedNpc);
+    await checkNpcChanges(selectedNpc);
   }
 
   function handleSelectNpc(npc: NpcSummary) {
@@ -571,8 +619,31 @@ export function NPCPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleOpenInObsidian}>
-                <BookOpen className="mr-2 h-4 w-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshNpc}
+                disabled={filesLoading || checkingChanges}
+              >
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${filesLoading || checkingChanges ? "animate-spin" : ""}`}
+                />
+                {hasChanges ? "Atualizar *" : "Atualizar"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenInObsidian}
+                disabled={obsidianAvailable !== true}
+                title={
+                  obsidianAvailable === false
+                    ? "Obsidian não encontrado"
+                    : obsidianAvailable === null
+                      ? "Verificando Obsidian..."
+                      : "Abrir no Obsidian"
+                }
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
                 Abrir no Obsidian
               </Button>
               <Button variant="destructive" size="sm" onClick={handleDeleteNpc}>

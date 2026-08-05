@@ -4,6 +4,7 @@ mod indexer;
 mod hermes;
 mod logging;
 mod npcs;
+mod obsidian;
 mod parser;
 mod projects;
 mod structured_output;
@@ -24,6 +25,7 @@ use hermes::{
     summarize_conversation_command,
 };
 use npcs::{list_npcs_command, load_npc_files_command};
+use obsidian::{is_obsidian_available_command, npc_changed_command, open_in_obsidian_command};
 use structured_output::generate_structured_output_command;
 use templates::{
     apply_template_command, create_blank_entity_command, list_templates_command,
@@ -167,6 +169,9 @@ pub fn run() {
             save_custom_template_command,
             list_npcs_command,
             load_npc_files_command,
+            is_obsidian_available_command,
+            open_in_obsidian_command,
+            npc_changed_command,
             start_syncthing_command,
             stop_syncthing_command,
             syncthing_status_command,
