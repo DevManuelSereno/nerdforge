@@ -3,6 +3,7 @@ mod fs;
 mod indexer;
 mod hermes;
 mod logging;
+mod npcs;
 mod parser;
 mod projects;
 mod structured_output;
@@ -22,6 +23,7 @@ use hermes::{
     chat_with_hermes_command, list_conversations_command, load_conversation_command,
     summarize_conversation_command,
 };
+use npcs::list_npcs_command;
 use structured_output::generate_structured_output_command;
 use templates::{
     apply_template_command, create_blank_entity_command, list_templates_command,
@@ -163,6 +165,7 @@ pub fn run() {
             apply_template_command,
             create_blank_entity_command,
             save_custom_template_command,
+            list_npcs_command,
             start_syncthing_command,
             stop_syncthing_command,
             syncthing_status_command,

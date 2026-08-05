@@ -823,40 +823,81 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 ---
 
 #### ⏳ Slice 5.6 — Módulo NPC
-- Dashboard de NPCs (grid/lista de cards)
-- Cada card mostra: nome, tags, status, thumbnail do portrait
-- Botão "Novo NPC" com 3 opções:
-  1. **"Escolher template pronto"**: lista de templates disponíveis (padrão + customizados)
-  2. **"Gerar com Hermes"**: usa structured output (5.4)
-  3. **"Criar do zero"**: gera estrutura mínima vazia
-- Ao criar (qualquer opção): abre automaticamente no Obsidian (se instalado)
-- Visualização do NPC (só leitura):
-  - Conteúdo de `index.md` renderizado como markdown
-  - `visual-dna.yaml` formatado
-  - `prompt.md` com botão "copiar para clipboard"
-  - Portrait (se existir)
-- Botões de ação: "Editar no Obsidian", "Regenerar Visual DNA" (5.7), "Regenerar Visual Prompt", "Excluir"
-- Botão "Atualizar" (refresh manual) para detectar edições feitas no Obsidian
 
-**Critérios de pronto:**
-- ⏳ Dashboard de NPCs funcional
-- ⏳ Botão "Novo NPC" com 3 opções de criação
-- ⏳ Templates embutidos aplicados corretamente
-- ⏳ Criação via Hermes funciona (usa 5.4)
-- ⏳ Criação do zero gera estrutura mínima
-- ⏳ Botão "Editar no Obsidian" funciona
-- ⏳ Visualização do NPC (só leitura)
-- ⏳ Botão refresh detecta mudanças do Obsidian
+> **DIVIDIDA EM SUB-SLICES** (aprovado pelo usuário para revisão/validação incremental):
+> - **✅ 5.6a** — Dashboard de NPCs (listar entidades do vault + cards)
+> - **5.6b** — Visualização read-only + ações (abrir no Obsidian, copiar prompt.md, excluir)
+> - **5.6c** — Integração com Obsidian + refresh de mudanças
+>
+> Cada sub-slice é validada separadamente antes de seguir para a próxima.
 
-**Atualização após Slice 2.4:**
-- O módulo deve consultar `vaultconfig.yaml` para descobrir a pasta destino de NPC (padrão `folder_map.npc`, fallback `npcs/`).
-- Se a pasta não existir, o módulo pode criá-la ou alertar o usuário.
+### Anotações de varredura (2026-08-04)
 
-**Atualização após Slice 5.5:**
-- A criação de NPC já usa `list_templates_command`, `apply_template_command` e `create_blank_entity_command`.
-- Falta integrar "Gerar com Hermes" ao fluxo e adicionar visualização/dashboard de NPCs existentes.
+**Indexer (`src-tauri/src/indexer.rs`):**
+- `IndexEntry { id, name, module, relative_path, absolute_path, kind, last_modified, size, title, status, tags }`
+- `VaultIndex { version, generated_at, root, entries }`
+- `rebuild_index(root)` / `load_index(root)`; commands `rebuild_index_command`, `get_index_command`
+- Usa módulos FIXOS `["npcs", "lore", "factions", "locations", "items", "scenes", "timeline"]` (NÃO lê `folder_map` do vaultconfig)
+- Escaneia subpastas recursivamente; cada NPC = pasta `npcs/<nome>/index.md`
+- Para listar NPCs no dashboard: filtrar por `module == "npc"` (ou a pasta mapeada) e `kind == "folder"`, ou pegar arquivos `index.md` de NPCs
 
----
+**Vault (`src-tauri/src/vault.rs`):**
+- `scan_vault(root, max_depth)` -> `VaultTreeNode { name, path, is_file, children }`; command `scan_vault_command`
+- `get_vault_structure`, `initialize_vault`, `initialize_vault_with_folders`
+- Serve como fallback para listar estrutura real se o index não bastar
+
+**Config (`src-tauri/src/config.rs`):**
+- `AppConfig { workspace, modules, sync, hermes }` — **NÃO tem seção para Obsidian** (config de Obsidian virá na 6.1)
+- Para 5.6c, a integração com Obsidian precisa de detecção por processo/URI scheme; config ainda não guarda isso
+
+**WorkspaceContext (`src/contexts/WorkspaceContext.tsx`):**
+- `Workspace { name, rootPath }`
+- `useWorkspace()` expõe: `workspace`, `setWorkspace`, `isLoading`, `setIsLoading`, `error`, `setError`, `isFirstRun`, `setIsFirstRun`, `loadWorkspace`, `configPath`
+- `configPath = ".nerdforge/config.yaml"`
+
+**Padrões de UI (`src/pages/Dashboard.tsx`):**
+- Usa `Card`, `CardHeader`, `CardContent`, `CardDescription`, `CardTitle` (shadcn/ui)
+- Padrão de refresh: botão `RefreshCw` com `animate-spin` quando carregando
+- Helpers `formatDate(timestamp)`, `formatRelativeTime(timestamp)` (pt-BR)
+- `useEffect` + `// eslint-disable-next-line react-hooks/exhaustive-deps` para loaders que dependem de `workspace.rootPath`
+
+### 5.6a — Dashboard de NPCs (concluído)
+
+**Backend:**
+- Novo `src-tauri/src/npcs.rs` com `NpcSummary` e `list_npcs_command`
+- Lê `vaultconfig.yaml` para resolver `folder_map.npc` (fallback `npcs`)
+- Cria pasta `npcs/` automaticamente se não existir
+- Escaneia subpastas de `npcs/`, extrai `status` e `tags` de `index.md`
+- Ordena por `last_modified` decrescente
+- Registrado em `src-tauri/src/lib.rs`
+- 3 testes unitários
+
+**Frontend:**
+- `src/pages/NPCPage.tsx` reescrito para dashboard + wizard
+- Lista NPCs em cards (nome, status, tags, última modificação)
+- Empty state quando não há NPCs
+- Botão "Novo NPC" mantém 3 modos de criação (template / Hermes / do zero)
+- Após criação, recarrega lista automaticamente
+- Botão "Atualizar" com `RefreshCw` + `animate-spin`
+- Novo componente `src/components/ui/badge.tsx` (shadcn)
+
+**Decisões:**
+- Módulo backend novo (`npcs.rs`) em vez de reaproveitar indexer
+- Criar pasta `npcs/` automaticamente
+- Nome no card = nome da pasta (frontmatter fica como melhoria futura)
+- Navegação para visualização via estado interno (avaliar rota na 5.6b)
+- Refresh manual (file watcher fica para 5.6c)
+
+### 5.6b — Visualização read-only + ações (próximo)
+
+- Visualização do NPC: `index.md` renderizado, `visual-dna.yaml` formatado, `prompt.md` com botão copiar
+- Ações: abrir no Obsidian, excluir
+- Clique no card do dashboard abre a visualização
+
+### 5.6c — Integração com Obsidian + refresh (próximo)
+
+- Botão "Editar no Obsidian" funciona via URI scheme ou processo
+- Botão refresh detecta mudanças externas
 
 #### ⏳ Slice 5.7 — Regeneração Rápida
 - Botões: "Regenerar Lore", "Regenerar Visual DNA", "Regenerar Visual Prompt"
@@ -1047,7 +1088,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 | Fase 2 — Vault Engine | 4 slices | 🔄 Em andamento | ~12 horas |
 | Fase 3 — Syncthing | 6 slices | ✅ Concluída | ~12 horas |
 | Fase 4 — Dashboard | 3 slices | ✅ Concluída (com revisão Inter-fases) | ~10 horas |
-| Fase 5 — Módulos | 9 slices | 🔄 Em andamento (4/9 concluídos) | ~45 horas |
+| Fase 5 — Módulos | 9 slices | 🔄 Em andamento (4.5/9 concluídos) | ~45 horas |
 | Fase 6 — Polish | 6 slices | ⏳ Pendente | ~18 horas |
 | **TOTAL** | **~32 slices** | **Fases 1–4 concluídas + 5.1, 5.2, 5.4 e 5.5 concluídos** | **~109 horas** |
 
