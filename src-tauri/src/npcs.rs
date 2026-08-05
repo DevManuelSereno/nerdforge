@@ -89,6 +89,34 @@ pub fn list_npcs(root: &str) -> Result<Vec<NpcSummary>, String> {
     Ok(npcs)
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NpcFiles {
+    pub index_md: String,
+    pub visual_dna_yaml: Option<String>,
+    pub prompt_md: Option<String>,
+}
+
+pub fn load_npc_files(root: &str, relative_path: &str) -> Result<NpcFiles, String> {
+    let base = Path::new(root).join(relative_path);
+    let index_md = std::fs::read_to_string(base.join("index.md"))
+        .map_err(|e| format!("Failed to read index.md: {}", e))?;
+
+    let visual_dna_yaml = std::fs::read_to_string(base.join("visual-dna.yaml")).ok();
+    let prompt_md = std::fs::read_to_string(base.join("prompt.md")).ok();
+
+    Ok(NpcFiles {
+        index_md,
+        visual_dna_yaml,
+        prompt_md,
+    })
+}
+
+#[tauri::command]
+pub fn load_npc_files_command(root: String, relative_path: String) -> Result<NpcFiles, String> {
+    tracing::info!("loading npc files for: {}", relative_path);
+    load_npc_files(&root, &relative_path)
+}
+
 #[tauri::command]
 pub fn list_npcs_command(root: String) -> Result<Vec<NpcSummary>, String> {
     tracing::info!("listing npcs for: {}", root);
@@ -163,6 +191,68 @@ mod tests {
         let npcs = list_npcs(&root).unwrap();
         assert!(npcs.is_empty());
         assert!(dir.join("npcs").is_dir());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_load_npc_files_reads_all() {
+        let dir = std::env::temp_dir().join("nerdforge_load_npc_files_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("npcs").join("Kael Thornwood")).unwrap();
+        std::fs::write(
+            dir.join("npcs").join("Kael Thornwood").join("index.md"),
+            "---\nstatus: complete\ntags: [npc, merchant]\n---\n\n# Kael Thornwood\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("npcs").join("Kael Thornwood").join("visual-dna.yaml"),
+            "style: dark\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("npcs").join("Kael Thornwood").join("prompt.md"),
+            "Generate an NPC named Kael.\n",
+        )
+        .unwrap();
+
+        std::fs::write(
+            dir.join("vaultconfig.yaml"),
+            "version: 1\nfolder_map:\n  npc: npcs\nfolder_template:\n  name: Padrão RPG\n  folders:\n    - npcs\n",
+        )
+        .unwrap();
+
+        let root = dir.to_string_lossy().to_string();
+        let files = load_npc_files(&root, "npcs/Kael Thornwood").unwrap();
+        assert!(files.index_md.contains("# Kael Thornwood"));
+        assert_eq!(files.visual_dna_yaml, Some("style: dark\n".to_string()));
+        assert_eq!(files.prompt_md, Some("Generate an NPC named Kael.\n".to_string()));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_load_npc_files_missing_optional() {
+        let dir = std::env::temp_dir().join("nerdforge_load_npc_files_optional_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("npcs").join("Lira Voss")).unwrap();
+        std::fs::write(
+            dir.join("npcs").join("Lira Voss").join("index.md"),
+            "---\nstatus: draft\ntags: [npc]\n---\n\n# Lira Voss\n",
+        )
+        .unwrap();
+
+        std::fs::write(
+            dir.join("vaultconfig.yaml"),
+            "version: 1\nfolder_map:\n  npc: npcs\nfolder_template:\n  name: Padrão RPG\n  folders:\n    - npcs\n",
+        )
+        .unwrap();
+
+        let root = dir.to_string_lossy().to_string();
+        let files = load_npc_files(&root, "npcs/Lira Voss").unwrap();
+        assert!(files.index_md.contains("# Lira Voss"));
+        assert_eq!(files.visual_dna_yaml, None);
+        assert_eq!(files.prompt_md, None);
 
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -826,7 +826,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 > **DIVIDIDA EM SUB-SLICES** (aprovado pelo usuário para revisão/validação incremental):
 > - **✅ 5.6a** — Dashboard de NPCs (listar entidades do vault + cards)
-> - **5.6b** — Visualização read-only + ações (abrir no Obsidian, copiar prompt.md, excluir)
+> - **✅ 5.6b** — Visualização read-only + ações (abrir no Obsidian, copiar prompt.md, excluir)
 > - **5.6c** — Integração com Obsidian + refresh de mudanças
 >
 > Cada sub-slice é validada separadamente antes de seguir para a próxima.

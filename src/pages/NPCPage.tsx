@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Users,
   Plus,
@@ -15,6 +17,13 @@ import {
   RefreshCw,
   User,
   FolderOpen,
+  ArrowLeft,
+  Trash2,
+  Copy,
+  Check,
+  BookOpen,
+  Palette,
+  Terminal,
 } from "lucide-react";
 
 interface TemplateFile {
@@ -45,6 +54,12 @@ interface NpcSummary {
   last_modified?: number;
 }
 
+interface NpcFiles {
+  index_md: string;
+  visual_dna_yaml?: string;
+  prompt_md?: string;
+}
+
 function formatRelativeTime(timestamp?: number): string {
   if (!timestamp) return "-";
   const seconds = Math.floor((Date.now() - timestamp * 1000) / 1000);
@@ -65,8 +80,13 @@ export function NPCPage() {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
-  const [mode, setMode] = useState<"dashboard" | "template" | "blank" | "hermes">("dashboard");
+  const [mode, setMode] = useState<"dashboard" | "template" | "blank" | "hermes" | "view">("dashboard");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [selectedNpc, setSelectedNpc] = useState<NpcSummary | null>(null);
+  const [npcFiles, setNpcFiles] = useState<NpcFiles | null>(null);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"lore" | "visual" | "prompt">("lore");
+  const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<ApplyTemplateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +123,23 @@ export function NPCPage() {
     }
   }, [workspace?.rootPath]);
 
+  const loadNpcFiles = useCallback(async (npc: NpcSummary) => {
+    if (!workspace?.rootPath) return;
+    setFilesLoading(true);
+    setError(null);
+    try {
+      const result = await invoke<NpcFiles>("load_npc_files_command", {
+        root: workspace.rootPath,
+        relativePath: npc.relative_path,
+      });
+      setNpcFiles(result);
+    } catch (err) {
+      setError(`Falha ao carregar arquivos do NPC: ${err}`);
+    } finally {
+      setFilesLoading(false);
+    }
+  }, [workspace?.rootPath]);
+
   useEffect(() => {
     loadNpcs();
   }, [loadNpcs]);
@@ -113,12 +150,22 @@ export function NPCPage() {
     }
   }, [workspace?.rootPath, mode, loadTemplates]);
 
+  useEffect(() => {
+    if (mode === "view" && selectedNpc) {
+      loadNpcFiles(selectedNpc);
+    }
+  }, [mode, selectedNpc, loadNpcFiles]);
+
   function resetFlow() {
     setMode("dashboard");
     setName("");
     setSelectedTemplate(null);
+    setSelectedNpc(null);
+    setNpcFiles(null);
     setResult(null);
     setError(null);
+    setActiveTab("lore");
+    setCopied(false);
   }
 
   function handleCreated() {
@@ -162,6 +209,50 @@ export function NPCPage() {
     } finally {
       setCreating(false);
     }
+  }
+
+  async function handleDeleteNpc() {
+    if (!selectedNpc || !workspace?.rootPath) return;
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir "${selectedNpc.name}"? Esta ação não pode ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    try {
+      await invoke("remove_dir", {
+        path: selectedNpc.absolute_path,
+      });
+      handleCreated();
+    } catch (err) {
+      setError(`Falha ao excluir NPC: ${err}`);
+    }
+  }
+
+  async function handleCopyPrompt() {
+    if (!npcFiles?.prompt_md) return;
+    try {
+      await navigator.clipboard.writeText(npcFiles.prompt_md);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      setError(`Falha ao copiar: ${err}`);
+    }
+  }
+
+  function handleOpenInObsidian() {
+    if (!selectedNpc?.absolute_path) return;
+    // 5.6c will implement real Obsidian integration.
+    // For now, expose the path so the user can open it manually.
+    setError(`Abertura no Obsidian será implementada no Slice 5.6c. Pasta: ${selectedNpc.absolute_path}`);
+  }
+
+  function handleSelectNpc(npc: NpcSummary) {
+    setSelectedNpc(npc);
+    setMode("view");
+    setActiveTab("lore");
+    setResult(null);
+    setError(null);
   }
 
   if (!workspace?.rootPath) {
@@ -210,6 +301,7 @@ export function NPCPage() {
           )}
           {mode !== "dashboard" && (
             <Button variant="outline" size="sm" onClick={resetFlow}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
             </Button>
           )}
@@ -265,7 +357,7 @@ export function NPCPage() {
                 <Card
                   key={npc.id}
                   className="cursor-pointer transition-colors hover:border-primary/50"
-                  onClick={() => console.log("selected npc", npc)}
+                  onClick={() => handleSelectNpc(npc)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
@@ -444,6 +536,189 @@ export function NPCPage() {
             <Wand2 className="mr-2 h-4 w-4" />
             Abrir Structured Output
           </Button>
+        </div>
+      )}
+
+      {mode === "view" && selectedNpc && (
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
+                <User className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold">{selectedNpc.name}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <FolderOpen className="h-3 w-3" />
+                    {selectedNpc.relative_path}
+                  </span>
+                  {selectedNpc.status && (
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedNpc.status}
+                    </Badge>
+                  )}
+                </div>
+                {selectedNpc.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedNpc.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleOpenInObsidian}>
+                <BookOpen className="mr-2 h-4 w-4" />
+                Abrir no Obsidian
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleDeleteNpc}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex gap-1 border-b border-border">
+            <button
+              onClick={() => setActiveTab("lore")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "lore"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              Lore
+            </button>
+            <button
+              onClick={() => setActiveTab("visual")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "visual"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Palette className="h-4 w-4" />
+              Visual DNA
+            </button>
+            <button
+              onClick={() => setActiveTab("prompt")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "prompt"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Terminal className="h-4 w-4" />
+              Prompt
+            </button>
+          </div>
+
+          {filesLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Carregando arquivos...
+            </div>
+          ) : (
+            <>
+              {activeTab === "lore" && (
+                <div className="max-w-none rounded-md border border-border p-4">
+                  <div className="space-y-4 leading-relaxed text-foreground">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({ children }) => <h1 className="text-2xl font-bold">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-xl font-semibold">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-lg font-semibold">{children}</h3>,
+                        p: ({ children }) => <p className="text-foreground/90">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc space-y-1 pl-5">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal space-y-1 pl-5">{children}</ol>,
+                        li: ({ children }) => <li>{children}</li>,
+                        a: ({ children, href }) => (
+                          <a href={href} className="text-primary underline hover:text-primary/80">
+                            {children}
+                          </a>
+                        ),
+                        code: ({ children }) => (
+                          <code className="rounded bg-muted px-1 py-0.5 text-sm font-mono">
+                            {children}
+                          </code>
+                        ),
+                        pre: ({ children }) => (
+                          <pre className="overflow-auto rounded-md bg-muted p-3 text-sm font-mono">
+                            {children}
+                          </pre>
+                        ),
+                        blockquote: ({ children }) => (
+                          <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground">
+                            {children}
+                          </blockquote>
+                        ),
+                      }}
+                    >
+                      {npcFiles?.index_md ?? "Nenhum conteúdo de lore disponível."}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "visual" && (
+                <div className="rounded-md border border-border bg-muted/50 p-4">
+                  {npcFiles?.visual_dna_yaml ? (
+                    <pre className="whitespace-pre-wrap text-sm font-mono">
+                      {npcFiles.visual_dna_yaml}
+                    </pre>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum visual-dna.yaml disponível para este NPC.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "prompt" && (
+                <div className="space-y-3">
+                  {npcFiles?.prompt_md ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Texto do prompt para geração com IA.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCopyPrompt}
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="mr-2 h-4 w-4" />
+                              Copiado
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copiar
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted/50 p-4 text-sm font-mono">
+                        {npcFiles.prompt_md}
+                      </pre>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum prompt.md disponível para este NPC.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
