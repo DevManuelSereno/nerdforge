@@ -7,6 +7,8 @@ import { NewProjectPage } from "@/pages/NewProjectPage";
 import { ChatPage } from "@/pages/ChatPage";
 import { NPCPage } from "@/pages/NPCPage";
 import { LorePage } from "@/pages/LorePage";
+import { FactionsPage } from "@/pages/FactionsPage";
+import { LocationsPage } from "@/pages/LocationsPage";
 import { VaultPage } from "@/pages/VaultPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { Onboarding } from "@/pages/Onboarding";
@@ -53,6 +55,8 @@ function AppRoutes() {
               { path: "structured-output", element: <StructuredOutputLab /> },
               { path: "npc", element: <NPCPage /> },
               { path: "lore", element: <LorePage /> },
+              { path: "factions", element: <FactionsPage /> },
+              { path: "locations", element: <LocationsPage /> },
               { path: "vault", element: <VaultPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "*", element: <Navigate to="/" replace /> },

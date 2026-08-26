@@ -1,5 +1,5 @@
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { Home, FolderKanban, MessageSquare, Users, BookOpen, Settings, FolderOpen, Menu, X, Wand2 } from "lucide-react";
+import { Home, FolderKanban, MessageSquare, Users, BookOpen, Settings, FolderOpen, Menu, X, Wand2, Swords, Map } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -11,8 +11,10 @@ const navItems = [
   { path: "/structured-output", label: "Structured Output", icon: Wand2 },
   { path: "/npc", label: "NPCs", icon: Users },
   { path: "/lore", label: "Lore", icon: BookOpen },
+  { path: "/factions", label: "Facções", icon: Swords },
+  { path: "/locations", label: "Locais", icon: Map },
   { path: "/vault", label: "Vault", icon: FolderOpen },
-  { path: "/settings", label: "Configura\u00e7\u00f5es", icon: Settings },
+  { path: "/settings", label: "Configurações", icon: Settings },
 ];
 
 export function AppLayout() {
@@ -27,7 +29,7 @@ export function AppLayout() {
         <div className="flex h-16 items-center border-b border-border px-6">
           <h1 className="text-xl font-bold tracking-tight">NerdForge</h1>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.path;
@@ -71,9 +73,7 @@ export function AppLayout() {
 
       {/* Mobile sidebar drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform flex-col border-r border-border bg-card transition-transform duration-200 md:hidden ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform flex-col border-r border-border bg-card transition-transform duration-200 md:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-16 items-center justify-between border-b border-border px-4">
           <h1 className="text-xl font-bold tracking-tight">NerdForge</h1>
@@ -85,7 +85,7 @@ export function AppLayout() {
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.path;
