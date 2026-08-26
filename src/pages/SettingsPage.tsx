@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
-import { RefreshCw, Play, Square, FolderSync, Copy, Check, Plus, UserPlus } from "lucide-react";
+import { RefreshCw, Play, Square, FolderSync, Copy, Check, Plus, UserPlus, BookOpen } from "lucide-react";
 
 interface SyncthingStatus {
   running: boolean;
@@ -67,6 +67,12 @@ interface AddDeviceResult {
   error?: string;
 }
 
+interface ObsidianVault {
+  path: string;
+  name: string;
+  open: boolean;
+}
+
 export function SettingsPage() {
   const { workspace, setWorkspace } = useWorkspace();
   const [name, setName] = useState(workspace?.name || "");
@@ -87,9 +93,12 @@ export function SettingsPage() {
   const [pendingDevices, setPendingDevices] = useState<PendingDevice[]>([]);
   const [addingDevice, setAddingDevice] = useState(false);
   const [vaultDevices, setVaultDevices] = useState<string[]>([]);
+  const [obsidianAvailable, setObsidianAvailable] = useState<boolean | null>(null);
+  const [obsidianVaults, setObsidianVaults] = useState<ObsidianVault[]>([]);
 
   useEffect(() => {
     loadSyncthingStatus();
+    loadObsidianStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -103,6 +112,19 @@ export function SettingsPage() {
       setLogPath(result);
     } catch (err) {
       setLogPath(String(err));
+    }
+  }
+
+  async function loadObsidianStatus() {
+    try {
+      const available = await invoke<boolean>("is_obsidian_available_command");
+      setObsidianAvailable(available);
+      if (available) {
+        const vaults = await invoke<ObsidianVault[]>("list_obsidian_vaults_command");
+        setObsidianVaults(vaults);
+      }
+    } catch {
+      setObsidianAvailable(false);
     }
   }
 
@@ -615,6 +637,81 @@ export function SettingsPage() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Obsidian
+          </CardTitle>
+          <CardDescription>
+            Detecção automática e integração com o Obsidian.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div
+              className={`h-3 w-3 rounded-full ${
+                obsidianAvailable === true
+                  ? "bg-green-500"
+                  : obsidianAvailable === false
+                    ? "bg-red-500"
+                    : "bg-yellow-500"
+              }`}
+            />
+            <span className="text-sm font-medium">
+              {obsidianAvailable === true
+                ? "Detectado"
+                : obsidianAvailable === false
+                  ? "Não encontrado"
+                  : "Verificando..."}
+            </span>
+          </div>
+
+          {obsidianAvailable === true && obsidianVaults.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Vaults registrados</h4>
+              <div className="space-y-1">
+                {obsidianVaults.map((vault) => (
+                  <div
+                    key={vault.path}
+                    className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                  >
+                    <div>
+                      <div className="font-medium">{vault.name}</div>
+                      <div className="font-mono text-xs text-muted-foreground">
+                        {vault.path}
+                      </div>
+                    </div>
+                    {vault.open && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                        Aberto
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {obsidianAvailable === true && obsidianVaults.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Nenhum vault registrado no Obsidian.
+            </p>
+          )}
+
+          {obsidianAvailable === false && (
+            <p className="text-sm text-muted-foreground">
+              Instale o Obsidian para habilitar a integração de edição.
+            </p>
+          )}
+
+          <Button variant="outline" size="sm" onClick={loadObsidianStatus}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Verificar novamente
+          </Button>
         </CardContent>
       </Card>
     </div>

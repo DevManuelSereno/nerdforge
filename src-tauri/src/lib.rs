@@ -28,7 +28,7 @@ use hermes::{
     summarize_conversation_command,
 };
 use npcs::{list_npcs_command, load_npc_files_command};
-use obsidian::{is_obsidian_available_command, npc_changed_command, open_in_obsidian_command};
+use obsidian::{is_obsidian_available_command, list_obsidian_vaults_command, npc_changed_command, open_in_obsidian_command};
 use regenerate::{upload_npc_portrait_command, regenerate_npc_part_command};
 use structured_output::generate_structured_output_command;
 use templates::{
@@ -179,7 +179,8 @@ pub fn run() {
                         regenerate_npc_part_command,
             upload_npc_portrait_command,
             is_obsidian_available_command,
-                        open_in_obsidian_command,
+            list_obsidian_vaults_command,
+            open_in_obsidian_command,
             npc_changed_command,
             start_syncthing_command,
             stop_syncthing_command,
