@@ -1,4 +1,5 @@
 mod config;
+mod conflicts;
 mod entities;
 mod fs;
 mod indexer;
@@ -16,6 +17,7 @@ mod vault;
 mod vaultconfig;
 
 use config::{ensure_config, is_first_run, load_config, save_config, AppConfig};
+use conflicts::find_conflicts_command;
 use entities::{list_entities_command, load_entity_files_command};
 use fs::{create_dir, list_dir, read_file, remove_dir, write_file, start_watcher};
 use indexer::{get_index_command, rebuild_index_command};
@@ -176,7 +178,8 @@ pub fn run() {
             load_npc_files_command,
             list_entities_command,
             load_entity_files_command,
-                        regenerate_npc_part_command,
+            find_conflicts_command,
+            regenerate_npc_part_command,
             upload_npc_portrait_command,
             is_obsidian_available_command,
             list_obsidian_vaults_command,

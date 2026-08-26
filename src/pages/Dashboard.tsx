@@ -16,6 +16,7 @@ import {
   Clock,
   FileText,
   HardDrive,
+  AlertTriangle,
 } from "lucide-react";
 
 interface SyncthingHealth {
@@ -52,6 +53,14 @@ interface DashboardData {
   recent_activities: ActivityEvent[];
 }
 
+interface SyncConflict {
+  file_name: string;
+  relative_path: string;
+  absolute_path: string;
+  size: number;
+  last_modified?: number;
+}
+
 export function Dashboard() {
   const { workspace, isLoading, error, setWorkspace } = useWorkspace();
   const [syncHealth, setSyncHealth] = useState<SyncthingHealth | null>(null);
@@ -59,16 +68,20 @@ export function Dashboard() {
   const [syncLoading, setSyncLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
+  const [conflictsLoading, setConflictsLoading] = useState(false);
 
   useEffect(() => {
     loadSyncStatus();
     loadDashboardData();
+    loadConflicts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (workspace?.rootPath) {
       loadDashboardData();
+      loadConflicts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.rootPath]);
@@ -109,6 +122,21 @@ export function Dashboard() {
   function openProject(path: string) {
     const name = path.split(/[\\/]/).pop() || path;
     setWorkspace({ name, rootPath: path });
+  }
+
+  async function loadConflicts() {
+    if (!workspace?.rootPath) return;
+    setConflictsLoading(true);
+    try {
+      const result = await invoke<SyncConflict[]>("find_conflicts_command", {
+        root: workspace.rootPath,
+      });
+      setConflicts(result);
+    } catch (err) {
+      console.error("Falha ao procurar conflitos:", err);
+    } finally {
+      setConflictsLoading(false);
+    }
   }
 
   function formatDate(timestamp?: number): string {
@@ -304,6 +332,50 @@ export function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        {conflicts.length > 0 && (
+          <Card className="border-yellow-600/30 bg-yellow-50 dark:bg-yellow-950/20">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                  Conflitos de Sync
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {conflictsLoading && (
+                    <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                  <span className="rounded-full bg-yellow-600/20 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                    {conflicts.length}
+                  </span>
+                </div>
+              </div>
+              <CardDescription>
+                Arquivos com conflito de sincronização detectados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {conflicts.slice(0, 5).map((conflict) => (
+                  <div
+                    key={conflict.absolute_path}
+                    className="rounded-md border border-yellow-600/20 px-3 py-2 text-sm"
+                  >
+                    <div className="truncate font-medium">{conflict.file_name}</div>
+                    <div className="truncate font-mono text-xs text-muted-foreground">
+                      {conflict.relative_path}
+                    </div>
+                  </div>
+                ))}
+                {conflicts.length > 5 && (
+                  <p className="text-xs text-muted-foreground">
+                    +{conflicts.length - 5} conflito(s) adicional(is)
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-2">
