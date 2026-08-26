@@ -25,6 +25,8 @@ import {
   Palette,
   Terminal,
   ExternalLink,
+  Sparkles,
+  ImagePlus,
 } from "lucide-react";
 
 interface TemplateFile {
@@ -93,6 +95,8 @@ export function NPCPage() {
   const [checkingChanges, setCheckingChanges] = useState(false);
   const [result, setResult] = useState<ApplyTemplateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState<"lore" | "visual" | "prompt" | null>(null);
+  const [uploadingPortrait, setUploadingPortrait] = useState(false);
 
   const loadNpcs = useCallback(async () => {
     if (!workspace?.rootPath) return;
@@ -202,6 +206,8 @@ export function NPCPage() {
     setObsidianAvailable(null);
     setHasChanges(false);
     setCheckingChanges(false);
+    setRegenerating(null);
+    setUploadingPortrait(false);
   }
 
   function handleCreated() {
@@ -293,6 +299,70 @@ export function NPCPage() {
     setError(null);
     await loadNpcFiles(selectedNpc);
     await checkNpcChanges(selectedNpc);
+  }
+
+  async function handleRegenerate(part: "lore" | "visual" | "prompt") {
+    if (!selectedNpc || !workspace?.rootPath) return;
+    const confirmed = window.confirm(
+      `Tem certeza que deseja regenerar ${part === "lore" ? "a Lore" : part === "visual" ? "o Visual DNA" : "o Prompt"}? A versão atual será salva no histórico.`
+    );
+    if (!confirmed) return;
+    setRegenerating(part);
+    setError(null);
+    try {
+      const updated = await invoke<NpcFiles>("regenerate_npc_part_command", {
+        root: workspace.rootPath,
+        relativePath: selectedNpc.relative_path,
+        part,
+      });
+      setNpcFiles(updated);
+    } catch (err) {
+      setError(`Falha ao regenerar: ${err}`);
+    } finally {
+      setRegenerating(null);
+    }
+  }
+
+  async function handleUploadPortrait() {
+    if (!selectedNpc || !workspace?.rootPath) return;
+    setUploadingPortrait(true);
+    setError(null);
+    try {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/png,image/jpeg,image/webp";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) {
+          setUploadingPortrait(false);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = reader.result as string;
+          try {
+            await invoke("upload_npc_portrait_command", {
+              root: workspace.rootPath,
+              relativePath: selectedNpc.relative_path,
+              base64Image: base64,
+            });
+          } catch (err) {
+            setError(`Falha ao salvar imagem: ${err}`);
+          } finally {
+            setUploadingPortrait(false);
+          }
+        };
+        reader.onerror = () => {
+          setError("Falha ao ler arquivo de imagem.");
+          setUploadingPortrait(false);
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    } catch (err) {
+      setError(`Falha ao fazer upload: ${err}`);
+      setUploadingPortrait(false);
+    }
   }
 
   function handleSelectNpc(npc: NpcSummary) {
@@ -646,6 +716,19 @@ export function NPCPage() {
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Abrir no Obsidian
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUploadPortrait}
+                disabled={uploadingPortrait}
+              >
+                {uploadingPortrait ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                )}
+                Adicionar Imagem
+              </Button>
               <Button variant="destructive" size="sm" onClick={handleDeleteNpc}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Excluir
@@ -697,7 +780,23 @@ export function NPCPage() {
           ) : (
             <>
               {activeTab === "lore" && (
-                <div className="max-w-none rounded-md border border-border p-4">
+                <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRegenerate("lore")}
+                      disabled={regenerating !== null}
+                    >
+                      {regenerating === "lore" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" />
+                      )}
+                      Regenerar Lore
+                    </Button>
+                  </div>
+                  <div className="max-w-none rounded-md border border-border p-4">
                   <div className="space-y-4 leading-relaxed text-foreground">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
@@ -735,24 +834,57 @@ export function NPCPage() {
                     </ReactMarkdown>
                   </div>
                 </div>
+                </div>
               )}
 
               {activeTab === "visual" && (
-                <div className="rounded-md border border-border bg-muted/50 p-4">
-                  {npcFiles?.visual_dna_yaml ? (
-                    <pre className="whitespace-pre-wrap text-sm font-mono">
-                      {npcFiles.visual_dna_yaml}
-                    </pre>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Nenhum visual-dna.yaml disponível para este NPC.
-                    </p>
-                  )}
+                <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRegenerate("visual")}
+                      disabled={regenerating !== null}
+                    >
+                      {regenerating === "visual" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" />
+                      )}
+                      Regenerar Visual DNA
+                    </Button>
+                  </div>
+                  <div className="rounded-md border border-border bg-muted/50 p-4">
+                    {npcFiles?.visual_dna_yaml ? (
+                      <pre className="whitespace-pre-wrap text-sm font-mono">
+                        {npcFiles.visual_dna_yaml}
+                      </pre>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum visual-dna.yaml disponível para este NPC.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
               {activeTab === "prompt" && (
                 <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRegenerate("prompt")}
+                      disabled={regenerating !== null}
+                    >
+                      {regenerating === "prompt" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" />
+                      )}
+                      Regenerar Prompt
+                    </Button>
+                  </div>
                   {npcFiles?.prompt_md ? (
                     <>
                       <div className="flex items-center justify-between">

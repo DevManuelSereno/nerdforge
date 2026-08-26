@@ -7,6 +7,7 @@ mod npcs;
 mod obsidian;
 mod parser;
 mod projects;
+mod regenerate;
 mod structured_output;
 mod syncthing;
 mod templates;
@@ -26,6 +27,7 @@ use hermes::{
 };
 use npcs::{list_npcs_command, load_npc_files_command};
 use obsidian::{is_obsidian_available_command, npc_changed_command, open_in_obsidian_command};
+use regenerate::{upload_npc_portrait_command, regenerate_npc_part_command};
 use structured_output::generate_structured_output_command;
 use templates::{
     apply_template_command, create_blank_entity_command, list_templates_command,
@@ -121,6 +123,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             tracing::info!("single instance event received");
             let _ = show_window(app);
@@ -169,8 +172,10 @@ pub fn run() {
             save_custom_template_command,
             list_npcs_command,
             load_npc_files_command,
+                                                regenerate_npc_part_command,
+            upload_npc_portrait_command,
             is_obsidian_available_command,
-            open_in_obsidian_command,
+                        open_in_obsidian_command,
             npc_changed_command,
             start_syncthing_command,
             stop_syncthing_command,
