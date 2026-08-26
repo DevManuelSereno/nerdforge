@@ -1,4 +1,5 @@
 mod config;
+mod entities;
 mod fs;
 mod indexer;
 mod hermes;
@@ -15,6 +16,7 @@ mod vault;
 mod vaultconfig;
 
 use config::{ensure_config, is_first_run, load_config, save_config, AppConfig};
+use entities::{list_entities_command, load_entity_files_command};
 use fs::{create_dir, list_dir, read_file, remove_dir, write_file, start_watcher};
 use indexer::{get_index_command, rebuild_index_command};
 use logging::{default_log_dir, get_log_path, init_logging};
@@ -172,7 +174,9 @@ pub fn run() {
             save_custom_template_command,
             list_npcs_command,
             load_npc_files_command,
-                                                regenerate_npc_part_command,
+            list_entities_command,
+            load_entity_files_command,
+                        regenerate_npc_part_command,
             upload_npc_portrait_command,
             is_obsidian_available_command,
                         open_in_obsidian_command,
