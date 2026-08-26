@@ -899,7 +899,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 - Botão "Editar no Obsidian" funciona via URI scheme ou processo
 - Botão refresh detecta mudanças externas
 
-#### ⏳ Slice 5.7 — Regeneração Rápida
+#### ✅ Slice 5.7 — Regeneração Rápida
 - Botões: "Regenerar Lore", "Regenerar Visual DNA", "Regenerar Visual Prompt"
 - Cada chamada é independente (sem conversa)
 - Histórico de versões (salva versão anterior em `history/v1.md`)
@@ -932,7 +932,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ---
 
-#### ⏳ Slice 5.9 — Módulos Factions e Locations
+#### ✅ Slice 5.9 — Módulos Factions e Locations
 - Mesma arquitetura do Slice 5.8 (Lore)
 - Factions: `factions/<nome>/index.md`
 - Locations: `locations/<nome>/index.md`
@@ -950,7 +950,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ### **FASE 6 — Polish + Conflitos** ⏳
 
-#### ⏳ Slice 6.1 — Integração com Obsidian
+#### ✅ Slice 6.1 — Integração com Obsidian
 - Botão "Abrir no Obsidian" (abre `index.md` no vault)
 - Detecta Obsidian automaticamente (process/port check)
 - URI scheme: `obsidian://open?path=<vault>&file=<npc>`
@@ -962,7 +962,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ---
 
-#### ⏳ Slice 6.2 — Detecção de Conflitos
+#### ✅ Slice 6.2 — Detecção de Conflitos
 - Monitora arquivos `.sync-conflict-*` (Syncthing)
 - Lista conflitos na UI
 - Notificação visual (badge, toast)
