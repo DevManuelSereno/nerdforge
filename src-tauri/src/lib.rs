@@ -2,6 +2,7 @@ mod config;
 mod conflicts;
 mod entities;
 mod fs;
+mod health;
 mod indexer;
 mod hermes;
 mod logging;
@@ -13,11 +14,13 @@ mod regenerate;
 mod structured_output;
 mod syncthing;
 mod templates;
+mod update;
 mod vault;
 mod vaultconfig;
 
 use config::{ensure_config, is_first_run, load_config, save_config, AppConfig};
-use conflicts::find_conflicts_command;
+use conflicts::{find_conflicts_command, load_conflict_pair_command, resolve_conflict_command};
+use health::health_check_command;
 use entities::{list_entities_command, load_entity_files_command};
 use fs::{create_dir, list_dir, read_file, remove_dir, write_file, start_watcher};
 use indexer::{get_index_command, rebuild_index_command};
@@ -49,6 +52,7 @@ use syncthing::{
     syncthing_health_check_command, syncthing_status_command, syncthing_system_status_command,
     SyncthingState,
 };
+use update::{check_syncthing_update_command, download_syncthing_update_command};
 use vault::{
     get_vault_structure_command, get_vault_template_command, initialize_vault_command,
     initialize_vault_with_folders_command, scan_vault_command,
@@ -179,6 +183,11 @@ pub fn run() {
             list_entities_command,
             load_entity_files_command,
             find_conflicts_command,
+            load_conflict_pair_command,
+            resolve_conflict_command,
+            health_check_command,
+            check_syncthing_update_command,
+            download_syncthing_update_command,
             regenerate_npc_part_command,
             upload_npc_portrait_command,
             is_obsidian_available_command,

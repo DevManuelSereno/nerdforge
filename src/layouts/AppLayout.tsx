@@ -1,5 +1,5 @@
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { Home, FolderKanban, MessageSquare, Users, BookOpen, Settings, FolderOpen, Menu, X, Wand2, Swords, Map } from "lucide-react";
+import { Home, FolderKanban, MessageSquare, Users, BookOpen, Settings, FolderOpen, Menu, X, Wand2, Swords, Map, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -13,6 +13,7 @@ const navItems = [
   { path: "/lore", label: "Lore", icon: BookOpen },
   { path: "/factions", label: "Facções", icon: Swords },
   { path: "/locations", label: "Locais", icon: Map },
+  { path: "/conflicts", label: "Conflitos", icon: AlertTriangle },
   { path: "/vault", label: "Vault", icon: FolderOpen },
   { path: "/settings", label: "Configurações", icon: Settings },
 ];

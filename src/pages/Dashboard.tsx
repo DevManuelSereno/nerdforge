@@ -17,6 +17,7 @@ import {
   FileText,
   HardDrive,
   AlertTriangle,
+  Activity,
 } from "lucide-react";
 
 interface SyncthingHealth {
@@ -61,6 +62,19 @@ interface SyncConflict {
   last_modified?: number;
 }
 
+interface IntegrationStatus {
+  available: boolean;
+  label: string;
+  detail: string;
+}
+
+interface HealthStatus {
+  syncthing: IntegrationStatus;
+  hermes: IntegrationStatus;
+  obsidian: IntegrationStatus;
+  overall_healthy: boolean;
+}
+
 export function Dashboard() {
   const { workspace, isLoading, error, setWorkspace } = useWorkspace();
   const [syncHealth, setSyncHealth] = useState<SyncthingHealth | null>(null);
@@ -70,11 +84,13 @@ export function Dashboard() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
   const [conflictsLoading, setConflictsLoading] = useState(false);
+  const [health, setHealth] = useState<HealthStatus | null>(null);
 
   useEffect(() => {
     loadSyncStatus();
     loadDashboardData();
     loadConflicts();
+    loadHealth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -136,6 +152,15 @@ export function Dashboard() {
       console.error("Falha ao procurar conflitos:", err);
     } finally {
       setConflictsLoading(false);
+    }
+  }
+
+  async function loadHealth() {
+    try {
+      const result = await invoke<HealthStatus>("health_check_command");
+      setHealth(result);
+    } catch (err) {
+      console.error("Falha ao verificar saúde:", err);
     }
   }
 
@@ -236,6 +261,53 @@ export function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        {health && (
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <Activity className="h-4 w-4" />
+                  Health Check
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={loadHealth}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              </div>
+              <CardDescription>
+                {health.overall_healthy
+                  ? "Integrações ativas"
+                  : "Verifique integrações"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[
+                health.syncthing,
+                health.hermes,
+                health.obsidian,
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        item.available ? "bg-green-500" : "bg-red-500"
+                      }`}
+                    />
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground truncate ml-2 max-w-[180px]">
+                    {item.detail}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-2">

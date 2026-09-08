@@ -974,7 +974,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ---
 
-#### ⏳ Slice 6.3 — UI de Resolução de Conflitos
+#### ✅ Slice 6.3 — UI de Resolução de Conflitos
 - Side-by-side diff (versão local vs remota)
 - Botões: "Manter Local", "Manter Remota", "Mesclar"
 - Preview de mudanças antes de aplicar
@@ -986,7 +986,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ---
 
-#### ⏳ Slice 6.4 — Health Check
+#### ✅ Slice 6.4 — Health Check
 - Status de Syncthing (online/offline)
 - Status de Hermes (instalado, versão)
 - Status de Obsidian (detectado, vaults encontrados)
@@ -999,7 +999,7 @@ O usuário **nunca é obrigado** a usar o Hermes. Ele pode:
 
 ---
 
-#### ⏳ Slice 6.5 — Auto-Update do Syncthing
+#### ✅ Slice 6.5 — Auto-Update do Syncthing
 - Verifica versão mais recente (GitHub releases)
 - Download automático (background)
 - Substitui `syncthing.exe` (com backup)

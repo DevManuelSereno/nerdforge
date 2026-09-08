@@ -9,6 +9,7 @@ import { NPCPage } from "@/pages/NPCPage";
 import { LorePage } from "@/pages/LorePage";
 import { FactionsPage } from "@/pages/FactionsPage";
 import { LocationsPage } from "@/pages/LocationsPage";
+import { ConflictsPage } from "@/pages/ConflictsPage";
 import { VaultPage } from "@/pages/VaultPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { Onboarding } from "@/pages/Onboarding";
@@ -57,6 +58,7 @@ function AppRoutes() {
               { path: "lore", element: <LorePage /> },
               { path: "factions", element: <FactionsPage /> },
               { path: "locations", element: <LocationsPage /> },
+              { path: "conflicts", element: <ConflictsPage /> },
               { path: "vault", element: <VaultPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "*", element: <Navigate to="/" replace /> },

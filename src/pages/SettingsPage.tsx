@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
-import { RefreshCw, Play, Square, FolderSync, Copy, Check, Plus, UserPlus, BookOpen } from "lucide-react";
+import { RefreshCw, Play, Square, FolderSync, Copy, Check, Plus, UserPlus, BookOpen, Download, Loader2, ArrowUpCircle } from "lucide-react";
 
 interface SyncthingStatus {
   running: boolean;
@@ -73,6 +73,21 @@ interface ObsidianVault {
   open: boolean;
 }
 
+interface UpdateCheck {
+  current_version: string;
+  latest_version: string;
+  update_available: boolean;
+  download_url: string | null;
+  release_notes_url: string | null;
+  error: string | null;
+}
+
+interface UpdateResult {
+  success: boolean;
+  message: string;
+  new_version: string | null;
+}
+
 export function SettingsPage() {
   const { workspace, setWorkspace } = useWorkspace();
   const [name, setName] = useState(workspace?.name || "");
@@ -95,6 +110,10 @@ export function SettingsPage() {
   const [vaultDevices, setVaultDevices] = useState<string[]>([]);
   const [obsidianAvailable, setObsidianAvailable] = useState<boolean | null>(null);
   const [obsidianVaults, setObsidianVaults] = useState<ObsidianVault[]>([]);
+  const [updateCheck, setUpdateCheck] = useState<UpdateCheck | null>(null);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null);
 
   useEffect(() => {
     loadSyncthingStatus();
@@ -125,6 +144,57 @@ export function SettingsPage() {
       }
     } catch {
       setObsidianAvailable(false);
+    }
+  }
+
+  async function checkForUpdate() {
+    setUpdateLoading(true);
+    setUpdateResult(null);
+    try {
+      const result = await invoke<UpdateCheck>("check_syncthing_update_command");
+      setUpdateCheck(result);
+    } catch (err) {
+      setUpdateCheck({
+        current_version: "unknown",
+        latest_version: "unknown",
+        update_available: false,
+        download_url: null,
+        release_notes_url: null,
+        error: String(err),
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
+  }
+
+  async function downloadUpdate() {
+    if (!updateCheck?.download_url) return;
+    const confirmed = window.confirm(
+      `Tem certeza que deseja baixar e instalar o Syncthing ${updateCheck.latest_version}? O processo será interrompido durante a atualização.`
+    );
+    if (!confirmed) return;
+    setDownloading(true);
+    setUpdateResult(null);
+    try {
+      // Stop syncthing first if running
+      if (syncthing?.running) {
+        await invoke("stop_syncthing_command");
+      }
+      const result = await invoke<UpdateResult>("download_syncthing_update_command", {
+        downloadUrl: updateCheck.download_url,
+      });
+      setUpdateResult(result);
+      if (result.success) {
+        await loadSyncthingStatus();
+      }
+    } catch (err) {
+      setUpdateResult({
+        success: false,
+        message: String(err),
+        new_version: null,
+      });
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -637,6 +707,78 @@ export function SettingsPage() {
               </div>
             </div>
           )}
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <h4 className="flex items-center gap-2 text-sm font-medium">
+              <ArrowUpCircle className="h-4 w-4" />
+              Atualização do Syncthing
+            </h4>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={checkForUpdate}
+              disabled={updateLoading}
+            >
+              {updateLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Verificar atualizações
+            </Button>
+
+            {updateCheck && (
+              <div className="space-y-2 rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Versão atual:</span>
+                  <span className="font-mono">{updateCheck.current_version}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Última versão:</span>
+                  <span className="font-mono">{updateCheck.latest_version}</span>
+                </div>
+                {updateCheck.error && (
+                  <p className="text-xs text-destructive">{updateCheck.error}</p>
+                )}
+                {updateCheck.update_available && updateCheck.download_url && (
+                  <Button
+                    size="sm"
+                    onClick={downloadUpdate}
+                    disabled={downloading}
+                  >
+                    {downloading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    {downloading ? "Baixando..." : "Baixar e instalar"}
+                  </Button>
+                )}
+                {updateCheck.release_notes_url && (
+                  <a
+                    href={updateCheck.release_notes_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-xs text-primary underline hover:text-primary/80"
+                  >
+                    Ver notas da versão
+                  </a>
+                )}
+              </div>
+            )}
+
+            {updateResult && (
+              <div
+                className={`rounded-md p-3 text-sm ${
+                  updateResult.success
+                    ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-300"
+                    : "bg-destructive/10 text-destructive"
+                }`}
+              >
+                {updateResult.message}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

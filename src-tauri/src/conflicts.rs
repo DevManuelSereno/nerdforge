@@ -86,6 +86,131 @@ pub fn find_conflicts_command(root: String) -> Result<Vec<SyncConflict>, String>
     find_conflicts(&root)
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConflictPair {
+    pub original_path: String,
+    pub conflict_path: String,
+    pub original_content: Option<String>,
+    pub conflict_content: String,
+    pub original_name: String,
+    pub conflict_name: String,
+}
+
+/// Given a conflict file path, determine the original file path and return both contents.
+/// Syncthing names conflict files as: `<name>.sync-conflict-<date>-<time>-<device>.<ext>`
+/// The original file is `<name>.<ext>`.
+pub fn load_conflict_pair(conflict_path: &str) -> Result<ConflictPair, String> {
+    let path = Path::new(conflict_path);
+    if !path.exists() {
+        return Err(format!("Conflict file does not exist: {}", conflict_path));
+    }
+
+    let file_name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| "Invalid file name".to_string())?;
+
+    let original_name = derive_original_name(file_name)?;
+    let original_path = path
+        .parent()
+        .ok_or_else(|| "Conflict file has no parent".to_string())?
+        .join(&original_name);
+
+    let original_content = if original_path.exists() {
+        Some(
+            std::fs::read_to_string(&original_path)
+                .map_err(|e| format!("Failed to read original: {}", e))?,
+        )
+    } else {
+        None
+    };
+
+    let conflict_content = std::fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read conflict file: {}", e))?;
+
+    Ok(ConflictPair {
+        original_path: original_path.to_string_lossy().to_string(),
+        conflict_path: conflict_path.to_string(),
+        original_content,
+        conflict_content,
+        original_name,
+        conflict_name: file_name.to_string(),
+    })
+}
+
+/// Derive the original file name from a Syncthing conflict file name.
+/// `index.sync-conflict-20260826-120000-abc.md` → `index.md`
+fn derive_original_name(conflict_name: &str) -> Result<String, String> {
+    // Find the `.sync-conflict-` marker
+    let marker = ".sync-conflict-";
+    let marker_pos = conflict_name
+        .find(marker)
+        .ok_or_else(|| format!("Not a conflict file: {}", conflict_name))?;
+
+    // Everything before the marker is the base name
+    let base = &conflict_name[..marker_pos];
+
+    // After the marker, find the last dot to get the extension
+    let after_marker = &conflict_name[marker_pos + marker.len()..];
+    let ext_pos = after_marker
+        .rfind('.')
+        .ok_or_else(|| format!("Conflict file has no extension: {}", conflict_name))?;
+
+    let extension = &after_marker[ext_pos..]; // includes the dot
+
+    Ok(format!("{}{}", base, extension))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ResolveAction {
+    #[serde(rename = "keep_local")]
+    KeepLocal,
+    #[serde(rename = "keep_remote")]
+    KeepRemote,
+    #[serde(rename = "delete_conflict")]
+    DeleteConflict,
+}
+
+/// Resolve a conflict file by either:
+/// - KeepLocal: delete the conflict file (keep the original as-is)
+/// - KeepRemote: overwrite the original with the conflict content, then delete conflict
+/// - DeleteConflict: just delete the conflict file (same as keep_local but explicit)
+pub fn resolve_conflict(conflict_path: &str, action: ResolveAction) -> Result<(), String> {
+    let path = Path::new(conflict_path);
+    if !path.exists() {
+        return Err(format!("Conflict file does not exist: {}", conflict_path));
+    }
+
+    match action {
+        ResolveAction::KeepLocal | ResolveAction::DeleteConflict => {
+            std::fs::remove_file(path)
+                .map_err(|e| format!("Failed to delete conflict file: {}", e))
+        }
+        ResolveAction::KeepRemote => {
+            let pair = load_conflict_pair(conflict_path)?;
+            std::fs::write(&pair.original_path, &pair.conflict_content)
+                .map_err(|e| format!("Failed to overwrite original: {}", e))?;
+            std::fs::remove_file(path)
+                .map_err(|e| format!("Failed to delete conflict file: {}", e))
+        }
+    }
+}
+
+#[tauri::command]
+pub fn load_conflict_pair_command(conflict_path: String) -> Result<ConflictPair, String> {
+    tracing::info!("loading conflict pair: {}", conflict_path);
+    load_conflict_pair(&conflict_path)
+}
+
+#[tauri::command]
+pub fn resolve_conflict_command(
+    conflict_path: String,
+    action: ResolveAction,
+) -> Result<(), String> {
+    tracing::info!("resolving conflict: {} ({:?})", conflict_path, action);
+    resolve_conflict(&conflict_path, action)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -149,6 +274,86 @@ mod tests {
             .unwrap();
         assert!(kael_conflict.relative_path.starts_with("npcs/"));
         assert!(kael_conflict.relative_path.contains("Kael"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_derive_original_name() {
+        assert_eq!(
+            derive_original_name("index.sync-conflict-20260826-120000-abc.md").unwrap(),
+            "index.md"
+        );
+        assert_eq!(
+            derive_original_name("visual-dna.sync-conflict-20260826.yaml").unwrap(),
+            "visual-dna.yaml"
+        );
+        assert_eq!(
+            derive_original_name("data.sync-conflict-123.json").unwrap(),
+            "data.json"
+        );
+        assert!(derive_original_name("index.md").is_err());
+    }
+
+    #[test]
+    fn test_load_conflict_pair() {
+        let dir = std::env::temp_dir().join("nerdforge_conflict_pair_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        std::fs::write(dir.join("index.md"), "# Local content").unwrap();
+        std::fs::write(
+            dir.join("index.sync-conflict-20260826-120000-abc.md"),
+            "# Remote content",
+        ).unwrap();
+
+        let conflict_path = dir.join("index.sync-conflict-20260826-120000-abc.md");
+        let pair = load_conflict_pair(conflict_path.to_string_lossy().as_ref()).unwrap();
+
+        assert_eq!(pair.original_name, "index.md");
+        assert_eq!(pair.original_content, Some("# Local content".to_string()));
+        assert_eq!(pair.conflict_content, "# Remote content");
+        assert!(pair.original_path.ends_with("index.md"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_resolve_keep_local() {
+        let dir = std::env::temp_dir().join("nerdforge_resolve_local_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        std::fs::write(dir.join("index.md"), "# Local").unwrap();
+        std::fs::write(dir.join("index.sync-conflict-123.md"), "# Remote").unwrap();
+
+        let conflict_path = dir.join("index.sync-conflict-123.md");
+        resolve_conflict(conflict_path.to_string_lossy().as_ref(), ResolveAction::KeepLocal).unwrap();
+
+        // Original stays, conflict deleted
+        assert!(dir.join("index.md").exists());
+        assert!(!dir.join("index.sync-conflict-123.md").exists());
+        assert_eq!(std::fs::read_to_string(dir.join("index.md")).unwrap(), "# Local");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_resolve_keep_remote() {
+        let dir = std::env::temp_dir().join("nerdforge_resolve_remote_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        std::fs::write(dir.join("index.md"), "# Local").unwrap();
+        std::fs::write(dir.join("index.sync-conflict-123.md"), "# Remote").unwrap();
+
+        let conflict_path = dir.join("index.sync-conflict-123.md");
+        resolve_conflict(conflict_path.to_string_lossy().as_ref(), ResolveAction::KeepRemote).unwrap();
+
+        // Original overwritten, conflict deleted
+        assert!(dir.join("index.md").exists());
+        assert!(!dir.join("index.sync-conflict-123.md").exists());
+        assert_eq!(std::fs::read_to_string(dir.join("index.md")).unwrap(), "# Remote");
 
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,6 +35,22 @@
     ],
     "resources": {
       "resources/syncthing.exe": "./syncthing.exe"
+    },
+    "publisher": "Manuel",
+    "copyright": "© 2026 Manuel. All rights reserved.",
+    "category": "Productivity",
+    "shortDescription": "Hub desktop para criadores de RPG e worldbuilding",
+    "longDescription": "NerdForge é um hub desktop para criadores de RPG, worldbuilding e escrita criativa. Gerencie NPCs, lore, facções e locais com geração assistida por IA, sincronização via Syncthing e integração com Obsidian.",
+    "nsis": {
+      "installerIcon": "icons/icon.ico",
+      "installMode": "perMachine",
+      "languages": ["pt-BR", "en-US"],
+      "displayLanguageSelector": true
+    },
+    "windows": {
+      "wix": {
+        "language": "pt-BR"
+      }
     }
   }
 }
